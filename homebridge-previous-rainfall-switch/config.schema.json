@@ -1,0 +1,38 @@
+{
+  "pluginAlias": "PreviousRainfallSwitch",
+  "pluginType": "platform",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "title": "Platform Name",
+        "type": "string",
+        "required": true,
+        "default": "Previous Rainfall Switch"
+      },
+      "station_id": {
+        "title": "Weather Station ID",
+        "type": "string",
+        "required": true,
+        "default": "PHL",
+        "description": "The ACIS weather station ID (e.g., PHL for Philadelphia)"
+      },
+      "rain_threshold": {
+        "title": "Rain Threshold (inches)",
+        "type": "number",
+        "required": true,
+        "default": 0.25,
+        "minimum": 0.1,
+        "description": "Amount of rain in inches that will trigger the switch"
+      },
+      "check_interval": {
+        "title": "Check Interval (minutes)",
+        "type": "integer",
+        "required": true,
+        "default": 60,
+        "minimum": 15,
+        "description": "How often to check for rain (in minutes)"
+      }
+    }
+  }
+} 

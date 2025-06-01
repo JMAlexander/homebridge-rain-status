@@ -1,0 +1,64 @@
+{
+  "pluginAlias": "RainStatus",
+  "pluginType": "platform",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "current_rain": {
+        "type": "object",
+        "title": "Current Rain Status",
+        "properties": {
+          "name": {
+            "title": "Switch Name",
+            "type": "string",
+            "default": "Current Rain Status"
+          },
+          "station_id": {
+            "title": "NWS Station ID",
+            "type": "string",
+            "default": "KPHL",
+            "description": "National Weather Service station ID (e.g., KPHL for Philadelphia)"
+          },
+          "check_interval": {
+            "title": "Check Interval (minutes)",
+            "type": "integer",
+            "default": 5,
+            "minimum": 1,
+            "description": "How often to check for current rain (minimum 1 minute)"
+          }
+        }
+      },
+      "previous_rain": {
+        "type": "object",
+        "title": "Previous Rainfall",
+        "properties": {
+          "name": {
+            "title": "Switch Name",
+            "type": "string",
+            "default": "Previous Rainfall"
+          },
+          "station_id": {
+            "title": "ACIS Station ID",
+            "type": "string",
+            "default": "PHL",
+            "description": "ACIS weather station ID (e.g., PHL for Philadelphia)"
+          },
+          "rain_threshold": {
+            "title": "Rain Threshold (inches)",
+            "type": "number",
+            "default": 0.1,
+            "minimum": 0,
+            "description": "Amount of rain that will trigger the switch (checks last 48 hours)"
+          },
+          "check_interval": {
+            "title": "Check Interval (minutes)",
+            "type": "integer",
+            "default": 60,
+            "minimum": 15,
+            "description": "How often to check previous rainfall (minimum 15 minutes)"
+          }
+        }
+      }
+    }
+  }
+} 
