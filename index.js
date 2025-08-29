@@ -7,6 +7,7 @@ class RainStatusPlatform {
     this.api = api;
     this.switches = [];
     this.pollingIntervals = {};
+    this.boundCharacteristics = []; // Google Nest pattern: track bound characteristics
 
     if (!config) {
       log.warn('No configuration found for RainStatus');
@@ -158,6 +159,10 @@ class RainStatusPlatform {
       this.log.info('🧪 TESTING: Forcing sensor to NOT detected for HomeKit sync test');
       this.currentRainState = false;
 
+      // Google Nest pattern: Call updateData() to trigger HomeKit getValue() calls
+      this.log.info('🔔 Calling updateData() to trigger HomeKit monitoring');
+      this.updateData();
+
       this.log.debug('Current rain check completed successfully');
 
     } catch (error) {
@@ -261,6 +266,10 @@ class RainStatusPlatform {
       this.log.info('🧪 TESTING: Forcing contact sensor to CONTACT_DETECTED for HomeKit sync test');
       this.previousRainState = true;
 
+      // Google Nest pattern: Call updateData() to trigger HomeKit getValue() calls
+      this.log.info('🔔 Calling updateData() to trigger HomeKit monitoring');
+      this.updateData();
+
     } catch (error) {
       this.log.error('Error checking previous rainfall:', error.message);
       if (error.response) {
@@ -337,7 +346,18 @@ class RainStatusPlatform {
     if (setFunc) {
       actual.on('set', setFunc.bind(this));
     }
+    
+    // Google Nest pattern: track bound characteristics for getValue() calls
+    this.boundCharacteristics.push([service, characteristic]);
+    
     return actual;
+  }
+
+  // Google Nest pattern: Update data by calling getValue() on all bound characteristics
+  updateData() {
+    this.boundCharacteristics.map(function (c) {
+      c[0].getCharacteristic(c[1]).getValue();
+    });
   }
 
   configureAccessory(accessory) {
