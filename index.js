@@ -63,12 +63,12 @@ class RainStatusPlatform {
     const accessory = new this.api.platformAccessory(name, this.api.hap.uuid.generate(name));
     const sensorService = new this.api.hap.Service.OccupancySensor(name);
     
-    // Add the OccupancyDetected characteristic (read-only)
-    const occupancyCharacteristic = sensorService.getCharacteristic(this.api.hap.Characteristic.OccupancyDetected);
-    occupancyCharacteristic.on('set', (value, callback) => {
-      this.log.warn(`Current rain sensor is read-only, cannot be set to ${value ? 'detected' : 'not detected'}`);
-      callback();
-    });
+    // Store the current rain state for the sensor
+    this.currentRainState = false;
+    
+    // Bind the characteristic using Google Nest pattern
+    this.bindCharacteristic(sensorService, this.api.hap.Characteristic.OccupancyDetected, 'Current Rain Status', 
+      () => this.currentRainState, null, (value) => value ? 'Rain Detected' : 'No Rain');
 
     accessory.addService(sensorService);
     this.api.registerPlatformAccessories('homebridge-rain-status', 'RainStatus', [accessory]);
@@ -86,12 +86,12 @@ class RainStatusPlatform {
     const accessory = new this.api.platformAccessory(name, this.api.hap.uuid.generate(name));
     const sensorService = new this.api.hap.Service.ContactSensor(name);
     
-    // Add the ContactSensorState characteristic (read-only)
-    const contactCharacteristic = sensorService.getCharacteristic(this.api.hap.Characteristic.ContactSensorState);
-    contactCharacteristic.on('set', (value, callback) => {
-      this.log.warn(`Previous rainfall sensor is read-only, cannot be set to ${value}`);
-      callback();
-    });
+    // Store the previous rain state for the sensor
+    this.previousRainState = false;
+    
+    // Bind the characteristic using Google Nest pattern
+    this.bindCharacteristic(sensorService, this.api.hap.Characteristic.ContactSensorState, 'Previous Rainfall', 
+      () => this.previousRainState ? 1 : 0, null, (value) => value === 1 ? 'Rain Threshold Met' : 'Rain Threshold Not Met');
 
     accessory.addService(sensorService);
     this.api.registerPlatformAccessories('homebridge-rain-status', 'RainStatus', [accessory]);
@@ -144,24 +144,19 @@ class RainStatusPlatform {
       const sensorService = accessory.getService(this.api.hap.Service.OccupancySensor);
       const currentState = sensorService.getCharacteristic(this.api.hap.Characteristic.OccupancyDetected).value;
       
+      // Update the stored state
+      this.currentRainState = isRaining;
+      
       if (currentState !== isRaining) {
         this.log.info(`Weather conditions changed: ${isRaining ? 'Rain detected' : 'No rain'}`);
         this.log.info(`Weather description: ${weatherDescription}`);
-        sensorService.updateCharacteristic(this.api.hap.Characteristic.OccupancyDetected, isRaining);
       } else {
         this.log.debug(`Weather conditions unchanged: ${isRaining ? 'Still raining' : 'Still no rain'}`);
       }
       
       // TESTING: Force sensor to NOT detected (false) to verify HomeKit updates
       this.log.info('🧪 TESTING: Forcing sensor to NOT detected for HomeKit sync test');
-      sensorService.updateCharacteristic(this.api.hap.Characteristic.OccupancyDetected, false);
-      
-      // Force HomeKit to recognize the change by emitting a change event
-      this.log.info('🔔 Emitting change event to force HomeKit sync');
-      sensorService.getCharacteristic(this.api.hap.Characteristic.OccupancyDetected).emit('change', {
-        oldValue: currentState,
-        newValue: false
-      });
+      this.currentRainState = false;
 
       this.log.debug('Current rain check completed successfully');
 
@@ -253,24 +248,18 @@ class RainStatusPlatform {
       const currentState = sensorService.getCharacteristic(this.api.hap.Characteristic.ContactSensorState).value;
       const newState = previousDayRain > rainThresholds.previous_day_threshold || twoDayRain > rainThresholds.two_day_threshold;
       
+      // Update the stored state
+      this.previousRainState = newState;
+      
       if (currentState !== newState) {
         this.log.info(`Rain conditions ${newState ? 'met' : 'not met'}: Previous day > ${rainThresholds.previous_day_threshold}" (${previousDayRain.toFixed(2)}") OR Two-day total > ${rainThresholds.two_day_threshold}" (${twoDayRain.toFixed(2)}")`);
-        const contactState = newState ? 1 : 0; // 1 = CONTACT_DETECTED, 0 = NOT_DETECTED
-        sensorService.updateCharacteristic(this.api.hap.Characteristic.ContactSensorState, contactState);
       } else {
         this.log.debug(`Rain status unchanged: ${newState ? 'Still meeting conditions' : 'Still not meeting conditions'}`);
       }
       
       // TESTING: Force contact sensor to CONTACT_DETECTED (1) to verify HomeKit updates
       this.log.info('🧪 TESTING: Forcing contact sensor to CONTACT_DETECTED for HomeKit sync test');
-      sensorService.updateCharacteristic(this.api.hap.Characteristic.ContactSensorState, 1);
-      
-      // Force HomeKit to recognize the change by emitting a change event
-      this.log.info('🔔 Emitting change event to force HomeKit sync');
-      sensorService.getCharacteristic(this.api.hap.Characteristic.ContactSensorState).emit('change', {
-        oldValue: currentState,
-        newValue: 1
-      });
+      this.previousRainState = true;
 
     } catch (error) {
       this.log.error('Error checking previous rainfall:', error.message);
@@ -329,6 +318,26 @@ class RainStatusPlatform {
     });
     this.pollingIntervals = {};
     this.log.info('Stopped all polling intervals');
+  }
+
+  // Google Nest pattern: Bind characteristic with getter and change handler
+  bindCharacteristic(service, characteristic, desc, getFunc, setFunc, format) {
+    const actual = service.getCharacteristic(characteristic)
+      .on('get', function (callback) {
+        const val = getFunc.bind(this)();
+        if (callback) callback(null, val);
+      }.bind(this))
+      .on('change', function (change) {
+        let disp = change.newValue;
+        if (format && disp !== null) {
+          disp = format(disp);
+        }
+        this.log.debug(desc + ' for ' + this.name + ' is: ' + disp);
+      }.bind(this));
+    if (setFunc) {
+      actual.on('set', setFunc.bind(this));
+    }
+    return actual;
   }
 
   configureAccessory(accessory) {
