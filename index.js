@@ -152,9 +152,9 @@ class RainStatusPlatform {
         this.log.debug(`Weather conditions unchanged: ${isRaining ? 'Still raining' : 'Still no rain'}`);
       }
       
-      // TESTING: Force sensor to detected (true) to verify HomeKit updates
-      this.log.info('🧪 TESTING: Forcing sensor to detected for HomeKit sync test');
-      sensorService.updateCharacteristic(this.api.hap.Characteristic.OccupancyDetected, true);
+      // TESTING: Force sensor to NOT detected (false) to verify HomeKit updates
+      this.log.info('🧪 TESTING: Forcing sensor to NOT detected for HomeKit sync test');
+      sensorService.updateCharacteristic(this.api.hap.Characteristic.OccupancyDetected, false);
 
       this.log.debug('Current rain check completed successfully');
 
@@ -253,6 +253,10 @@ class RainStatusPlatform {
       } else {
         this.log.debug(`Rain status unchanged: ${newState ? 'Still meeting conditions' : 'Still not meeting conditions'}`);
       }
+      
+      // TESTING: Force contact sensor to CONTACT_DETECTED (1) to verify HomeKit updates
+      this.log.info('🧪 TESTING: Forcing contact sensor to CONTACT_DETECTED for HomeKit sync test');
+      sensorService.updateCharacteristic(this.api.hap.Characteristic.ContactSensorState, 1);
 
     } catch (error) {
       this.log.error('Error checking previous rainfall:', error.message);
