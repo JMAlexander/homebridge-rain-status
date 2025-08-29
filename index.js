@@ -57,22 +57,22 @@ class RainStatusPlatform {
   }
 
   createCurrentRainSwitch(name, stationId, checkInterval) {
-    this.log.info(`Creating current rain status switch: ${name}`);
+    this.log.info(`Creating current rain status sensor: ${name}`);
     this.log.debug(`Station ID: ${stationId}, Check interval: ${checkInterval / 60000} minutes`);
     
     const accessory = new this.api.platformAccessory(name, this.api.hap.uuid.generate(name));
-    const switchService = new this.api.hap.Service.Switch(name);
+    const sensorService = new this.api.hap.Service.OccupancySensor(name);
     
-    // Add the On characteristic (read-only)
-    const onCharacteristic = switchService.getCharacteristic(this.api.hap.Characteristic.On);
-    onCharacteristic.on('set', (value, callback) => {
-      this.log.warn(`Current rain switch is read-only, cannot be set to ${value ? 'ON' : 'OFF'}`);
+    // Add the OccupancyDetected characteristic (read-only)
+    const occupancyCharacteristic = sensorService.getCharacteristic(this.api.hap.Characteristic.OccupancyDetected);
+    occupancyCharacteristic.on('set', (value, callback) => {
+      this.log.warn(`Current rain sensor is read-only, cannot be set to ${value ? 'detected' : 'not detected'}`);
       callback();
     });
 
-    accessory.addService(switchService);
+    accessory.addService(sensorService);
     this.api.registerPlatformAccessories('homebridge-rain-status', 'RainStatus', [accessory]);
-    this.log.info(`Successfully registered current rain switch accessory: ${name}`);
+    this.log.info(`Successfully registered current rain sensor accessory: ${name}`);
     this.switches.push(accessory);
 
     // Start polling for current rain status
@@ -80,22 +80,22 @@ class RainStatusPlatform {
   }
 
   createPreviousRainSwitch(name, stationId, rainThresholds, checkInterval) {
-    this.log.info(`Creating previous rainfall switch: ${name}`);
+    this.log.info(`Creating previous rainfall sensor: ${name}`);
     this.log.debug(`Station ID: ${stationId}, Previous day threshold: ${rainThresholds.previous_day_threshold} inches, Two-day threshold: ${rainThresholds.two_day_threshold} inches, Check interval: ${checkInterval / 60000} minutes`);
     
     const accessory = new this.api.platformAccessory(name, this.api.hap.uuid.generate(name));
-    const switchService = new this.api.hap.Service.Switch(name);
+    const sensorService = new this.api.hap.Service.ContactSensor(name);
     
-    // Add the On characteristic (read-only)
-    const onCharacteristic = switchService.getCharacteristic(this.api.hap.Characteristic.On);
-    onCharacteristic.on('set', (value, callback) => {
-      this.log.warn(`Previous rainfall switch is read-only, cannot be set to ${value ? 'ON' : 'OFF'}`);
+    // Add the ContactSensorState characteristic (read-only)
+    const contactCharacteristic = sensorService.getCharacteristic(this.api.hap.Characteristic.ContactSensorState);
+    contactCharacteristic.on('set', (value, callback) => {
+      this.log.warn(`Previous rainfall sensor is read-only, cannot be set to ${value}`);
       callback();
     });
 
-    accessory.addService(switchService);
+    accessory.addService(sensorService);
     this.api.registerPlatformAccessories('homebridge-rain-status', 'RainStatus', [accessory]);
-    this.log.info(`Successfully registered previous rainfall switch accessory: ${name}`);
+    this.log.info(`Successfully registered previous rainfall sensor accessory: ${name}`);
     this.switches.push(accessory);
 
     // Start polling for previous rainfall
@@ -141,20 +141,20 @@ class RainStatusPlatform {
       const isRaining = weatherTerms.some(term => weatherDescription.includes(term));
       this.log.debug(`Rain detection result: ${isRaining ? 'Rain detected' : 'No rain'}`);
       
-      const switchService = accessory.getService(this.api.hap.Service.Switch);
-      const currentState = switchService.getCharacteristic(this.api.hap.Characteristic.On).value;
+      const sensorService = accessory.getService(this.api.hap.Service.OccupancySensor);
+      const currentState = sensorService.getCharacteristic(this.api.hap.Characteristic.OccupancyDetected).value;
       
       if (currentState !== isRaining) {
         this.log.info(`Weather conditions changed: ${isRaining ? 'Rain detected' : 'No rain'}`);
         this.log.info(`Weather description: ${weatherDescription}`);
-        switchService.updateCharacteristic(this.api.hap.Characteristic.On, isRaining);
+        sensorService.updateCharacteristic(this.api.hap.Characteristic.OccupancyDetected, isRaining);
       } else {
         this.log.debug(`Weather conditions unchanged: ${isRaining ? 'Still raining' : 'Still no rain'}`);
       }
       
-      // TESTING: Force switch to ON to verify HomeKit updates
-      this.log.info('🧪 TESTING: Forcing switch to ON for HomeKit sync test');
-      switchService.updateCharacteristic(this.api.hap.Characteristic.On, true);
+      // TESTING: Force sensor to detected (true) to verify HomeKit updates
+      this.log.info('🧪 TESTING: Forcing sensor to detected for HomeKit sync test');
+      sensorService.updateCharacteristic(this.api.hap.Characteristic.OccupancyDetected, true);
 
       this.log.debug('Current rain check completed successfully');
 
@@ -242,13 +242,14 @@ class RainStatusPlatform {
       this.log.info(`Previous day rainfall: ${previousDayRain.toFixed(2)} inches`);
       this.log.info(`Two-day total rainfall: ${twoDayRain.toFixed(2)} inches`);
       
-      const switchService = accessory.getService(this.api.hap.Service.Switch);
-      const currentState = switchService.getCharacteristic(this.api.hap.Characteristic.On).value;
+      const sensorService = accessory.getService(this.api.hap.Service.ContactSensor);
+      const currentState = sensorService.getCharacteristic(this.api.hap.Characteristic.ContactSensorState).value;
       const newState = previousDayRain > rainThresholds.previous_day_threshold || twoDayRain > rainThresholds.two_day_threshold;
       
       if (currentState !== newState) {
         this.log.info(`Rain conditions ${newState ? 'met' : 'not met'}: Previous day > ${rainThresholds.previous_day_threshold}" (${previousDayRain.toFixed(2)}") OR Two-day total > ${rainThresholds.two_day_threshold}" (${twoDayRain.toFixed(2)}")`);
-        switchService.updateCharacteristic(this.api.hap.Characteristic.On, newState);
+        const contactState = newState ? this.api.hap.ContactSensorState.CONTACT_DETECTED : this.api.hap.ContactSensorState.NOT_DETECTED;
+        sensorService.updateCharacteristic(this.api.hap.Characteristic.ContactSensorState, contactState);
       } else {
         this.log.debug(`Rain status unchanged: ${newState ? 'Still meeting conditions' : 'Still not meeting conditions'}`);
       }
@@ -315,6 +316,9 @@ class RainStatusPlatform {
   configureAccessory(accessory) {
     this.log.info(`Configuring existing accessory: ${accessory.displayName}`);
     this.log.debug(`Accessory UUID: ${accessory.UUID}`);
+    
+    // Handle existing accessories that might still be switches
+    // They will be updated to sensors on the next restart
     this.switches.push(accessory);
   }
 }
