@@ -45,7 +45,10 @@ class RainStatusPlatform {
       this.createPreviousRainSwitch(
         previousConfig.name || 'Previous Rainfall',
         previousConfig.station_id || 'PHL',
-        previousConfig.rain_threshold || 0.1,
+        {
+          previous_day_threshold: previousConfig.previous_day_threshold || 0.1,
+          two_day_threshold: previousConfig.two_day_threshold || 0.25
+        },
         (previousConfig.check_interval || 60) * 60 * 1000
       );
     } else {
@@ -76,9 +79,9 @@ class RainStatusPlatform {
     this.startCurrentRainPolling(accessory, stationId, checkInterval);
   }
 
-  createPreviousRainSwitch(name, stationId, rainThreshold, checkInterval) {
+  createPreviousRainSwitch(name, stationId, rainThresholds, checkInterval) {
     this.log.info(`Creating previous rainfall switch: ${name}`);
-    this.log.debug(`Station ID: ${stationId}, Rain threshold: ${rainThreshold} inches, Check interval: ${checkInterval / 60000} minutes`);
+    this.log.debug(`Station ID: ${stationId}, Previous day threshold: ${rainThresholds.previous_day_threshold} inches, Two-day threshold: ${rainThresholds.two_day_threshold} inches, Check interval: ${checkInterval / 60000} minutes`);
     
     const accessory = new this.api.platformAccessory(name, this.api.hap.uuid.generate(name));
     const switchService = new this.api.hap.Service.Switch(name);
@@ -96,7 +99,7 @@ class RainStatusPlatform {
     this.switches.push(accessory);
 
     // Start polling for previous rainfall
-    this.startPreviousRainPolling(accessory, stationId, rainThreshold, checkInterval);
+    this.startPreviousRainPolling(accessory, stationId, rainThresholds, checkInterval);
   }
 
   async checkCurrentRain(accessory, stationId, retryCount = 0) {
@@ -144,7 +147,7 @@ class RainStatusPlatform {
       if (currentState !== isRaining) {
         this.log.info(`Weather conditions changed: ${isRaining ? 'Rain detected' : 'No rain'}`);
         this.log.info(`Weather description: ${weatherDescription}`);
-        switchService.getCharacteristic(this.api.hap.Characteristic.On).updateValue(isRaining);
+        switchService.updateCharacteristic(this.api.hap.Characteristic.On, isRaining);
       } else {
         this.log.debug(`Weather conditions unchanged: ${isRaining ? 'Still raining' : 'Still no rain'}`);
       }
@@ -178,20 +181,27 @@ class RainStatusPlatform {
     }
   }
 
-  async checkPreviousRain(accessory, stationId, rainThreshold) {
+  async checkPreviousRain(accessory, stationId, rainThresholds) {
     this.log.debug(`Starting previous rainfall check for station ${stationId}`);
     
     try {
-      const todayDate = new Date();
-      const endDate = new Date(todayDate - 24 * 60 * 60 * 1000);
-      const startDate = new Date(endDate - 48 * 60 * 60 * 1000);
-      
-      this.log.debug(`Checking rainfall from ${startDate.toISOString()} to ${endDate.toISOString()}`);
+      // Calculate dates: we want yesterday and the day before yesterday
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+      const dayBeforeYesterday = new Date(today);
+      dayBeforeYesterday.setDate(today.getDate() - 2);
 
+      // Format as YYYY-MM-DD
+      const yesterdayStr = yesterday.toISOString().split('T')[0];
+      const dayBeforeYesterdayStr = dayBeforeYesterday.toISOString().split('T')[0];
+
+      // Request data for the past 2 days (day before yesterday to yesterday)
+      this.log.debug(`Requesting rainfall data for ${dayBeforeYesterdayStr} and ${yesterdayStr}`);
       const requestBody = {
         sid: stationId,
-        sdate: startDate.toISOString().split('T')[0],
-        edate: endDate.toISOString().split('T')[0],
+        sdate: dayBeforeYesterdayStr,
+        edate: yesterdayStr,
         elems: [{ name: 'pcpn', interval: 'dly' }],
         meta: ['name']
       };
@@ -204,14 +214,20 @@ class RainStatusPlatform {
 
       this.log.debug('ACIS API response:', JSON.stringify(response.data, null, 2));
 
-      let totalRainfall = 0;
+      let previousDayRain = 0;
+      let twoDayRain = 0;
       if (response.data && response.data.data) {
         for (const [date, value] of response.data.data) {
           if (value !== null) {
             const parsedValue = parseFloat(value);
             if (!isNaN(parsedValue)) {
-              totalRainfall += parsedValue;
-              this.log.debug(`Rainfall value for ${date}: ${value} inches`);
+              if (date === yesterdayStr) {
+                previousDayRain = parsedValue;
+                this.log.debug(`Yesterday (${date}) rainfall: ${value} inches`);
+              }
+              if (date === yesterdayStr || date === dayBeforeYesterdayStr) {
+                twoDayRain += parsedValue;
+              }
             } else {
               this.log.warn(`Invalid rainfall value for ${date}: ${value}`);
             }
@@ -219,18 +235,18 @@ class RainStatusPlatform {
         }
       }
 
-      this.log.info(`Total rainfall in last 48 hours: ${totalRainfall.toFixed(2)} inches`);
-      this.log.debug(`Rain threshold: ${rainThreshold} inches`);
+      this.log.info(`Previous day rainfall: ${previousDayRain.toFixed(2)} inches`);
+      this.log.info(`Two-day total rainfall: ${twoDayRain.toFixed(2)} inches`);
       
       const switchService = accessory.getService(this.api.hap.Service.Switch);
       const currentState = switchService.getCharacteristic(this.api.hap.Characteristic.On).value;
-      const newState = totalRainfall >= rainThreshold;
+      const newState = previousDayRain > rainThresholds.previous_day_threshold || twoDayRain > rainThresholds.two_day_threshold;
       
       if (currentState !== newState) {
-        this.log.info(`Rainfall threshold ${rainThreshold} inches ${newState ? 'exceeded' : 'not exceeded'}`);
-        switchService.getCharacteristic(this.api.hap.Characteristic.On).updateValue(newState);
+        this.log.info(`Rain conditions ${newState ? 'met' : 'not met'}: Previous day > ${rainThresholds.previous_day_threshold}" (${previousDayRain.toFixed(2)}") OR Two-day total > ${rainThresholds.two_day_threshold}" (${twoDayRain.toFixed(2)}")`);
+        switchService.updateCharacteristic(this.api.hap.Characteristic.On, newState);
       } else {
-        this.log.debug(`Rainfall status unchanged: ${newState ? 'Still above threshold' : 'Still below threshold'}`);
+        this.log.debug(`Rain status unchanged: ${newState ? 'Still meeting conditions' : 'Still not meeting conditions'}`);
       }
 
     } catch (error) {
@@ -261,13 +277,13 @@ class RainStatusPlatform {
     });
   }
 
-  startPreviousRainPolling(accessory, stationId, rainThreshold, checkInterval) {
+  startPreviousRainPolling(accessory, stationId, rainThresholds, checkInterval) {
     this.log.info(`Starting previous rainfall polling for station ${stationId}`);
-    this.log.debug(`Polling interval: ${checkInterval / 60000} minutes, Rain threshold: ${rainThreshold} inches`);
+    this.log.debug(`Polling interval: ${checkInterval / 60000} minutes, Previous day threshold: ${rainThresholds.previous_day_threshold} inches, Two-day threshold: ${rainThresholds.two_day_threshold} inches`);
     
     const intervalId = setInterval(() => {
       this.log.debug('Polling interval triggered - checking previous rainfall...');
-      this.checkPreviousRain(accessory, stationId, rainThreshold).catch(error => {
+      this.checkPreviousRain(accessory, stationId, rainThresholds).catch(error => {
         this.log.error('Previous rain check failed:', error.message);
       });
     }, checkInterval);
@@ -276,7 +292,7 @@ class RainStatusPlatform {
     
     // Initial check
     this.log.debug('Performing initial previous rainfall check...');
-    this.checkPreviousRain(accessory, stationId, rainThreshold).catch(error => {
+    this.checkPreviousRain(accessory, stationId, rainThresholds).catch(error => {
       this.log.error('Initial previous rainfall check failed:', error.message);
     });
   }

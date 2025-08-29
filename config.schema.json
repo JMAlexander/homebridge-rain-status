@@ -43,12 +43,19 @@
             "default": "PHL",
             "description": "ACIS weather station ID (e.g., PHL for Philadelphia)"
           },
-          "rain_threshold": {
-            "title": "Rain Threshold (inches)",
+          "previous_day_threshold": {
+            "title": "Previous Day Rain Threshold (inches)",
             "type": "number",
             "default": 0.1,
             "minimum": 0,
-            "description": "Amount of rain that will trigger the switch (checks last 48 hours)"
+            "description": "Amount of rain in the previous day that will trigger the switch"
+          },
+          "two_day_threshold": {
+            "title": "Two-Day Rain Threshold (inches)",
+            "type": "number",
+            "default": 0.25,
+            "minimum": 0,
+            "description": "Amount of rain in the previous two days combined that will trigger the switch"
           },
           "check_interval": {
             "title": "Check Interval (minutes)",

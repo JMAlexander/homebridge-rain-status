@@ -1,5 +1,5 @@
 {
-  "name": "homebridge-rain-switch",
+  "name": "homebridge-rain-status",
   "version": "1.0.0",
   "description": "Homebridge plugin that combines current rain status and previous rainfall monitoring",
   "main": "index.js",
@@ -14,10 +14,6 @@
   ],
   "author": "Jeffrey Alexander",
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/JMAlexander/homebridge-rain-switch.git"
-  },
   "engines": {
     "homebridge": ">=1.0.0"
   },

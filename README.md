@@ -44,7 +44,8 @@ npm install -g homebridge-rain-status
       "previous_rain": {
         "name": "Previous Rainfall",
         "station_id": "PHL",
-        "rain_threshold": 0.1,
+        "previous_day_threshold": 0.1,
+        "two_day_threshold": 0.25,
         "check_interval": 60
       }
     }
@@ -62,7 +63,8 @@ npm install -g homebridge-rain-status
 ### Previous Rainfall
 - `name`: The name of the switch in HomeKit (default: "Previous Rainfall")
 - `station_id`: The ACIS weather station ID (default: "PHL" for Philadelphia)
-- `rain_threshold`: Amount of rain in inches that will trigger the switch (default: 0.1)
+- `previous_day_threshold`: Amount of rain in the previous day that will trigger the switch (default: 0.1)
+- `two_day_threshold`: Amount of rain in the previous two days combined that will trigger the switch (default: 0.25)
 - `check_interval`: How often to check for rain in minutes (default: 60, minimum: 15)
 
 ## Finding Your Station IDs
