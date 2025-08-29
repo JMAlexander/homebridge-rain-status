@@ -248,7 +248,7 @@ class RainStatusPlatform {
       
       if (currentState !== newState) {
         this.log.info(`Rain conditions ${newState ? 'met' : 'not met'}: Previous day > ${rainThresholds.previous_day_threshold}" (${previousDayRain.toFixed(2)}") OR Two-day total > ${rainThresholds.two_day_threshold}" (${twoDayRain.toFixed(2)}")`);
-        const contactState = newState ? this.api.hap.ContactSensorState.CONTACT_DETECTED : this.api.hap.ContactSensorState.NOT_DETECTED;
+        const contactState = newState ? 1 : 0; // 1 = CONTACT_DETECTED, 0 = NOT_DETECTED
         sensorService.updateCharacteristic(this.api.hap.Characteristic.ContactSensorState, contactState);
       } else {
         this.log.debug(`Rain status unchanged: ${newState ? 'Still meeting conditions' : 'Still not meeting conditions'}`);
