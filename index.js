@@ -151,6 +151,10 @@ class RainStatusPlatform {
       } else {
         this.log.debug(`Weather conditions unchanged: ${isRaining ? 'Still raining' : 'Still no rain'}`);
       }
+      
+      // TESTING: Force switch to ON to verify HomeKit updates
+      this.log.info('🧪 TESTING: Forcing switch to ON for HomeKit sync test');
+      switchService.updateCharacteristic(this.api.hap.Characteristic.On, true);
 
       this.log.debug('Current rain check completed successfully');
 
