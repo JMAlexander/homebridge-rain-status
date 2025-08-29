@@ -155,6 +155,13 @@ class RainStatusPlatform {
       // TESTING: Force sensor to NOT detected (false) to verify HomeKit updates
       this.log.info('🧪 TESTING: Forcing sensor to NOT detected for HomeKit sync test');
       sensorService.updateCharacteristic(this.api.hap.Characteristic.OccupancyDetected, false);
+      
+      // Force HomeKit to recognize the change by emitting a change event
+      this.log.info('🔔 Emitting change event to force HomeKit sync');
+      sensorService.getCharacteristic(this.api.hap.Characteristic.OccupancyDetected).emit('change', {
+        oldValue: currentState,
+        newValue: false
+      });
 
       this.log.debug('Current rain check completed successfully');
 
@@ -257,6 +264,13 @@ class RainStatusPlatform {
       // TESTING: Force contact sensor to CONTACT_DETECTED (1) to verify HomeKit updates
       this.log.info('🧪 TESTING: Forcing contact sensor to CONTACT_DETECTED for HomeKit sync test');
       sensorService.updateCharacteristic(this.api.hap.Characteristic.ContactSensorState, 1);
+      
+      // Force HomeKit to recognize the change by emitting a change event
+      this.log.info('🔔 Emitting change event to force HomeKit sync');
+      sensorService.getCharacteristic(this.api.hap.Characteristic.ContactSensorState).emit('change', {
+        oldValue: currentState,
+        newValue: 1
+      });
 
     } catch (error) {
       this.log.error('Error checking previous rainfall:', error.message);
