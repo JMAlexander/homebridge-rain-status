@@ -2,18 +2,29 @@ const axios = require('axios');
 
 class RainStatusPlatform {
   constructor(log, config, api) {
+    // Safety check for log parameter - provide fallback if undefined
+    if (!log) {
+      console.log('🔔🔔🔔 WARNING: log parameter is undefined, using console.log as fallback');
+      this.log = {
+        info: (msg) => console.log(`[INFO] ${msg}`),
+        debug: (msg) => console.log(`[DEBUG] ${msg}`),
+        warn: (msg) => console.log(`[WARN] ${msg}`),
+        error: (msg) => console.log(`[ERROR] ${msg}`)
+      };
+    } else {
+      this.log = log;
+    }
+    
     this.log.info('🔔🔔🔔 RainStatus platform constructor called');
     this.log.info('🔔🔔🔔 Constructor parameters:');
     this.log.info('🔔🔔🔔   - log type:', typeof log);
     this.log.info('🔔🔔🔔   - config type:', typeof config);
     this.log.info('🔔🔔🔔   - api type:', typeof api);
     
-    this.log = log;
     this.config = config;
     this.api = api;
     
     this.log.info('🔔🔔🔔 Config received:', JSON.stringify(this.config, null, 2));
-    //this.log.info('🔔🔔🔔 API object keys:', Object.keys(this.api));
     
     // Accessory storage
     this.sensors = [];
