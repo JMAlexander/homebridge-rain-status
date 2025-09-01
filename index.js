@@ -2,9 +2,18 @@ const axios = require('axios');
 
 class RainStatusPlatform {
   constructor(log, config, api) {
+    this.log.info('🔔🔔🔔 RainStatus platform constructor called');
+    this.log.info('🔔🔔🔔 Constructor parameters:');
+    this.log.info('🔔🔔🔔   - log type:', typeof log);
+    this.log.info('🔔🔔🔔   - config type:', typeof config);
+    this.log.info('🔔🔔🔔   - api type:', typeof api);
+    
     this.log = log;
     this.config = config;
     this.api = api;
+    
+    this.log.info('🔔🔔🔔 Config received:', JSON.stringify(this.config, null, 2));
+    this.log.info('🔔🔔🔔 API object keys:', Object.keys(this.api));
     
     // Accessory storage
     this.sensors = [];
@@ -24,57 +33,62 @@ class RainStatusPlatform {
     this.currentRainUrl = `https://api.weather.gov/points/${this.config.latitude},${this.config.longitude}`;
     this.previousRainUrl = 'https://data.rcc-acis.org/StnData';
     
-    this.log.info('RainStatus platform initialized');
-  }
-
-  // Homebridge required method: return all accessories
-  accessories(callback) {
-    this.log.info('Homebridge requesting accessories...');
-    this.log.debug('Current config:', JSON.stringify(this.config, null, 2));
-    this.log.debug('Current sensors length:', this.sensors.length);
-    
-    // Return the accessories immediately
-    this.log.info(`Returning ${this.sensors.length} accessories to Homebridge`);
-    callback(this.sensors);
+    this.log.info('🔔🔔🔔 URLs configured:');
+    this.log.info('🔔🔔🔔   - Current rain URL:', this.currentRainUrl);
+    this.log.info('🔔🔔🔔   - Previous rain URL:', this.previousRainUrl);
+    this.log.info('🔔🔔🔔 RainStatus platform constructor completed');
   }
 
   // Modern Homebridge method: called after all accessories are configured
   didFinishLaunching() {
-    this.log.info('🔔 didFinishLaunching called - creating accessories...');
+    this.log.info('🔔🔔🔔 didFinishLaunching method called!');
+    this.log.info('🔔🔔🔔 Current state:');
+    this.log.info('🔔🔔🔔   - sensors.length:', this.sensors.length);
+    this.log.info('🔔🔔🔔   - isPolling:', this.isPolling);
+    this.log.info('🔔🔔🔔   - config keys:', Object.keys(this.config));
     
     // Create accessories if they don't exist
     if (this.sensors.length === 0) {
-      this.log.info('No existing accessories found, creating new ones...');
+      this.log.info('🔔🔔🔔 No existing accessories found, creating new ones...');
       this.createAccessories();
+    } else {
+      this.log.info('🔔🔔🔔 Existing accessories found, skipping creation');
     }
     
     // Start platform-level polling after accessories are created
     if (!this.isPolling) {
+      this.log.info('🔔🔔🔔 Starting platform-level polling...');
       this.startPlatformPolling();
+    } else {
+      this.log.info('🔔🔔🔔 Platform-level polling already active');
     }
+    
+    this.log.info('🔔🔔🔔 didFinishLaunching method completed');
   }
 
   createAccessories() {
-    this.log.info('Creating accessories...');
-    this.log.debug('Config check - current_rain exists:', !!this.config.current_rain);
-    this.log.debug('Config check - previous_rain exists:', !!this.config.previous_rain);
+    this.log.info('🔔🔔🔔 createAccessories method called!');
+    this.log.info('🔔🔔🔔 Config analysis:');
+    this.log.info('🔔🔔🔔   - current_rain exists:', !!this.config.current_rain);
+    this.log.info('🔔🔔🔔   - previous_rain exists:', !!this.config.previous_rain);
+    this.log.info('🔔🔔🔔   - Full config:', JSON.stringify(this.config, null, 2));
     
     // Create current rain sensor if configured
     if (this.config.current_rain) {
       const currentConfig = this.config.current_rain;
-      this.log.debug('Creating current rain sensor with config:', JSON.stringify(currentConfig, null, 2));
+      this.log.info('🔔🔔🔔 Creating current rain sensor with config:', JSON.stringify(currentConfig, null, 2));
       this.createCurrentRainSensor(
         currentConfig.name || 'Current Rain Status',
         currentConfig.station_id || 'KPHL'
       );
     } else {
-      this.log.warn('No current_rain configuration found, skipping current rain sensor');
+      this.log.warn('🔔🔔🔔 No current_rain configuration found, skipping current rain sensor');
     }
 
     // Create previous rainfall sensor if configured
     if (this.config.previous_rain) {
       const previousConfig = this.config.previous_rain;
-      this.log.debug('Creating previous rainfall sensor with config:', JSON.stringify(previousConfig, null, 2));
+      this.log.info('🔔🔔🔔 Creating previous rainfall sensor with config:', JSON.stringify(previousConfig, null, 2));
       this.createPreviousRainSensor(
         previousConfig.name || 'Previous Rainfall',
         previousConfig.station_id || 'PHL',
@@ -84,56 +98,98 @@ class RainStatusPlatform {
         }
       );
     } else {
-      this.log.warn('No previous_rain configuration found, skipping previous rainfall sensor');
+      this.log.warn('🔔🔔🔔 No previous_rain configuration found, skipping previous rainfall sensor');
     }
     
-    this.log.info(`Finished creating accessories. Total sensors: ${this.sensors.length}`);
+    this.log.info(`🔔🔔🔔 Finished creating accessories. Total sensors: ${this.sensors.length}`);
+    this.log.info('🔔🔔🔔 createAccessories method completed');
   }
 
   createCurrentRainSensor(name, stationId) {
-    this.log.info(`Creating current rain status sensor: ${name}`);
-    this.log.debug(`Station ID: ${stationId}`);
+    this.log.info(`🔔🔔🔔 createCurrentRainSensor called with name: ${name}, stationId: ${stationId}`);
     
-    const accessory = new this.api.platformAccessory(name, this.api.hap.uuid.generate(name));
-    const sensorService = new this.api.hap.Service.OccupancySensor(name);
-    
-    // Bind the characteristic using Google Nest pattern
-    this.bindCharacteristic(sensorService, this.api.hap.Characteristic.OccupancyDetected, 'Current Rain Status', 
-      () => this.currentRainState, null, (value) => value ? 'Rain Detected' : 'No Rain');
+    try {
+      this.log.info('🔔🔔🔔 Creating platformAccessory...');
+      const accessory = new this.api.platformAccessory(name, this.api.hap.uuid.generate(name));
+      this.log.info('🔔🔔🔔 PlatformAccessory created successfully');
+      
+      this.log.info('🔔🔔🔔 Creating OccupancySensor service...');
+      const sensorService = new this.api.hap.Service.OccupancySensor(name);
+      this.log.info('🔔🔔🔔 OccupancySensor service created successfully');
+      
+      this.log.info('🔔🔔🔔 Binding characteristic...');
+      // Bind the characteristic using Google Nest pattern
+      this.bindCharacteristic(sensorService, this.api.hap.Characteristic.OccupancyDetected, 'Current Rain Status', 
+        () => this.currentRainState, null, (value) => value ? 'Rain Detected' : 'No Rain');
+      this.log.info('🔔🔔🔔 Characteristic bound successfully');
 
-    // Add updateData method to the accessory
-    accessory.updateData = () => {
-      this.log.debug(`🔔 Accessory ${name}: Updating OccupancyDetected to ${this.currentRainState}`);
-      sensorService.updateCharacteristic(this.api.hap.Characteristic.OccupancyDetected, this.currentRainState);
-    };
+      // Add updateData method to the accessory
+      accessory.updateData = () => {
+        this.log.info(`🔔🔔🔔 Accessory ${name}: updateData called, updating OccupancyDetected to ${this.currentRainState}`);
+        sensorService.updateCharacteristic(this.api.hap.Characteristic.OccupancyDetected, this.currentRainState);
+      };
+      this.log.info('🔔🔔🔔 updateData method added to accessory');
 
-    accessory.addService(sensorService);
-    this.api.registerPlatformAccessories('homebridge-rain-status', 'RainStatus', [accessory]);
-    this.log.info(`Successfully registered current rain sensor accessory: ${name}`);
-    this.sensors.push(accessory);
+      this.log.info('🔔🔔🔔 Adding service to accessory...');
+      accessory.addService(sensorService);
+      this.log.info('🔔🔔🔔 Service added to accessory successfully');
+      
+      this.log.info('🔔🔔🔔 Registering platform accessories...');
+      this.api.registerPlatformAccessories('homebridge-rain-status', 'RainStatus', [accessory]);
+      this.log.info(`🔔🔔🔔 Successfully registered current rain sensor accessory: ${name}`);
+      
+      this.log.info('🔔🔔🔔 Adding accessory to sensors array...');
+      this.sensors.push(accessory);
+      this.log.info(`🔔🔔🔔 Accessory added to sensors array. Total sensors: ${this.sensors.length}`);
+      
+    } catch (error) {
+      this.log.error(`🔔🔔🔔 ERROR creating current rain sensor: ${error.message}`);
+      this.log.error(`🔔🔔🔔 Error stack: ${error.stack}`);
+    }
   }
 
   createPreviousRainSensor(name, stationId, rainThresholds) {
-    this.log.info(`Creating previous rainfall sensor: ${name}`);
-    this.log.debug(`Station ID: ${stationId}, Previous day threshold: ${rainThresholds.previous_day_threshold} inches, Two-day threshold: ${rainThresholds.two_day_threshold} inches`);
+    this.log.info(`🔔🔔🔔 createPreviousRainSensor called with name: ${name}, stationId: ${stationId}`);
+    this.log.info(`🔔🔔🔔 Rain thresholds: Previous day: ${rainThresholds.previous_day_threshold} inches, Two-day: ${rainThresholds.two_day_threshold} inches`);
     
-    const accessory = new this.api.platformAccessory(name, this.api.hap.uuid.generate(name));
-    const sensorService = new this.api.hap.Service.ContactSensor(name);
-    
-    // Bind the characteristic using Google Nest pattern
-    this.bindCharacteristic(sensorService, this.api.hap.Characteristic.ContactSensorState, 'Previous Rainfall', 
-      () => this.previousRainState, null, (value) => value === 1 ? 'Rain Threshold Met' : 'Rain Threshold Not Met');
+    try {
+      this.log.info('🔔🔔🔔 Creating platformAccessory...');
+      const accessory = new this.api.platformAccessory(name, this.api.hap.uuid.generate(name));
+      this.log.info('🔔🔔🔔 PlatformAccessory created successfully');
+      
+      this.log.info('🔔🔔🔔 Creating ContactSensor service...');
+      const sensorService = new this.api.hap.Service.ContactSensor(name);
+      this.log.info('🔔🔔🔔 ContactSensor service created successfully');
+      
+      this.log.info('🔔🔔🔔 Binding characteristic...');
+      // Bind the characteristic using Google Nest pattern
+      this.bindCharacteristic(sensorService, this.api.hap.Characteristic.ContactSensorState, 'Previous Rainfall', 
+        () => this.previousRainState, null, (value) => value === 1 ? 'Rain Threshold Met' : 'Rain Threshold Not Met');
+      this.log.info('🔔🔔🔔 Characteristic bound successfully');
 
-    // Add updateData method to the accessory
-    accessory.updateData = () => {
-      this.log.debug(`🔔 Accessory ${name}: Updating ContactSensorState to ${this.previousRainState}`);
-      sensorService.updateCharacteristic(this.api.hap.Characteristic.ContactSensorState, this.previousRainState);
-    };
+      // Add updateData method to the accessory
+      accessory.updateData = () => {
+        this.log.info(`🔔🔔🔔 Accessory ${name}: updateData called, updating ContactSensorState to ${this.previousRainState}`);
+        sensorService.updateCharacteristic(this.api.hap.Characteristic.ContactSensorState, this.previousRainState);
+      };
+      this.log.info('🔔🔔🔔 updateData method added to accessory');
 
-    accessory.addService(sensorService);
-    this.api.registerPlatformAccessories('homebridge-rain-status', 'RainStatus', [accessory]);
-    this.log.info(`Successfully registered previous rainfall sensor accessory: ${name}`);
-    this.sensors.push(accessory);
+      this.log.info('🔔🔔🔔 Adding service to accessory...');
+      accessory.addService(sensorService);
+      this.log.info('🔔🔔🔔 Service added to accessory successfully');
+      
+      this.log.info('🔔🔔🔔 Registering platform accessories...');
+      this.api.registerPlatformAccessories('homebridge-rain-status', 'RainStatus', [accessory]);
+      this.log.info(`🔔🔔🔔 Successfully registered previous rainfall sensor accessory: ${name}`);
+      
+      this.log.info('🔔🔔🔔 Adding accessory to sensors array...');
+      this.sensors.push(accessory);
+      this.log.info(`🔔🔔🔔 Accessory added to sensors array. Total sensors: ${this.sensors.length}`);
+      
+    } catch (error) {
+      this.log.error(`🔔🔔🔔 ERROR creating previous rainfall sensor: ${error.message}`);
+      this.log.error(`🔔🔔🔔 Error stack: ${error.stack}`);
+    }
   }
 
   startPlatformPolling() {
@@ -371,23 +427,45 @@ class RainStatusPlatform {
   }
 
   configureAccessory(accessory) {
-    this.log.info(`Configuring existing accessory: ${accessory.displayName}`);
-    this.log.debug(`Accessory UUID: ${accessory.UUID}`);
+    this.log.info(`🔔🔔🔔 configureAccessory called for: ${accessory.displayName}`);
+    this.log.info(`🔔🔔🔔 Accessory details:`);
+    this.log.info(`🔔🔔🔔   - UUID: ${accessory.UUID}`);
+    this.log.info(`🔔🔔🔔   - Type: ${accessory.context?.type || 'unknown'}`);
+    this.log.info(`🔔🔔🔔   - Services: ${accessory.services?.length || 0}`);
     
     // Handle existing accessories that might still be switches
     // They will be updated to sensors on the next restart
+    this.log.info('🔔🔔🔔 Adding accessory to sensors array...');
     this.sensors.push(accessory);
+    this.log.info(`🔔🔔🔔 Accessory added. Total sensors: ${this.sensors.length}`);
     
     // Add updateData method to existing accessories if they don't have one
     if (!accessory.updateData) {
-      this.log.info(`Adding updateData method to existing accessory: ${accessory.displayName}`);
+      this.log.info(`🔔🔔🔔 Adding updateData method to existing accessory: ${accessory.displayName}`);
       accessory.updateData = () => {
-        this.log.debug(`🔔 Existing accessory ${accessory.displayName}: updateData called but no specific logic implemented`);
+        this.log.info(`🔔🔔🔔 Existing accessory ${accessory.displayName}: updateData called but no specific logic implemented`);
       };
+    } else {
+      this.log.info(`🔔🔔🔔 Accessory ${accessory.displayName} already has updateData method`);
     }
+    
+    this.log.info(`🔔🔔🔔 configureAccessory completed for: ${accessory.displayName}`);
   }
 }
 
 module.exports = (api) => {
-  api.registerPlatform('homebridge-rain-status', 'RainStatus', RainStatusPlatform);
+  console.log('🔔🔔🔔 homebridge-rain-status module loading...');
+  console.log('🔔🔔🔔 API object received:', typeof api);
+  console.log('🔔🔔🔔 API keys:', Object.keys(api));
+  
+  try {
+    console.log('🔔🔔🔔 Registering RainStatus platform...');
+    api.registerPlatform('homebridge-rain-status', 'RainStatus', RainStatusPlatform);
+    console.log('🔔🔔🔔 RainStatus platform registered successfully');
+  } catch (error) {
+    console.error('🔔🔔🔔 ERROR registering platform:', error.message);
+    console.error('🔔🔔🔔 Error stack:', error.stack);
+  }
+  
+  console.log('🔔🔔🔔 homebridge-rain-status module loaded successfully');
 };
