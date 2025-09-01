@@ -385,4 +385,4 @@ class RainStatusPlatform {
 
 module.exports = (api) => {
   api.registerPlatform('homebridge-rain-status', 'RainStatus', RainStatusPlatform);
-};No
+};
