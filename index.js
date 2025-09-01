@@ -41,13 +41,46 @@ class RainStatusPlatform {
     this.boundCharacteristics = [];
     
     // API configuration
-    this.currentRainUrl = `https://api.weather.gov/points/${this.config.latitude},${this.config.longitude}`;
+    // Use station_id from config instead of lat/lng for current rain
+    if (this.config.current_rain && this.config.current_rain.station_id) {
+      this.currentRainUrl = `https://api.weather.gov/stations/${this.config.current_rain.station_id}/observations/latest`;
+    } else {
+      this.currentRainUrl = 'https://api.weather.gov/stations/KPHL/observations/latest';
+    }
     this.previousRainUrl = 'https://data.rcc-acis.org/StnData';
     
     this.log.info('🔔🔔🔔 URLs configured:');
     this.log.info('🔔🔔🔔   - Current rain URL:', this.currentRainUrl);
     this.log.info('🔔🔔🔔   - Previous rain URL:', this.previousRainUrl);
     this.log.info('🔔🔔🔔 RainStatus platform constructor completed');
+  }
+
+  // Homebridge required method: return accessories (Google Nest pattern)
+  accessories(callback) {
+    this.log.info('🔔🔔🔔 Homebridge requesting accessories...');
+    this.log.info('🔔🔔🔔 Current sensors count:', this.sensors.length);
+    
+    // Create accessories if they don't exist
+    if (this.sensors.length === 0) {
+      this.log.info('🔔🔔🔔 No existing accessories found, creating new ones...');
+      this.createAccessories();
+    } else {
+      this.log.info('🔔🔔🔔 Existing accessories found, using cached ones');
+    }
+    
+    // Start platform-level polling after accessories are created
+    if (!this.isPolling) {
+      this.log.info('🔔🔔🔔 Starting platform-level polling...');
+      this.startPlatformPolling();
+    } else {
+      this.log.info('🔔🔔🔔 Platform-level polling already active');
+    }
+    
+    // Return the accessories to Homebridge (Google Nest pattern)
+    this.log.info(`🔔🔔🔔 Returning ${this.sensors.length} accessories to Homebridge`);
+    callback(this.sensors);
+    
+    this.log.info('🔔🔔🔔 accessories method completed');
   }
 
   // Modern Homebridge method: called after all accessories are configured
