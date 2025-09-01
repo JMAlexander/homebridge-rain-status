@@ -7,7 +7,7 @@ class RainStatusPlatform {
     this.api = api;
     
     // Accessory storage
-    this.switches = [];
+    this.sensors = [];
     
     // Platform-level state management
     this.currentRainState = false;
@@ -30,9 +30,12 @@ class RainStatusPlatform {
   // Homebridge required method: return all accessories
   accessories(callback) {
     this.log.info('Homebridge requesting accessories...');
+    this.log.debug('Current config:', JSON.stringify(this.config, null, 2));
+    this.log.debug('Current sensors length:', this.sensors.length);
     
     // Create accessories if they don't exist
-    if (this.switches.length === 0) {
+    if (this.sensors.length === 0) {
+      this.log.info('No existing accessories found, creating new ones...');
       this.createAccessories();
     }
     
@@ -41,11 +44,15 @@ class RainStatusPlatform {
       this.startPlatformPolling();
     }
     
-    callback(this.switches);
+    // Return the accessories immediately
+    this.log.info(`Returning ${this.sensors.length} accessories to Homebridge`);
+    callback(this.sensors);
   }
 
   createAccessories() {
     this.log.info('Creating accessories...');
+    this.log.debug('Config check - current_rain exists:', !!this.config.current_rain);
+    this.log.debug('Config check - previous_rain exists:', !!this.config.previous_rain);
     
     // Create current rain sensor if configured
     if (this.config.current_rain) {
@@ -74,6 +81,8 @@ class RainStatusPlatform {
     } else {
       this.log.warn('No previous_rain configuration found, skipping previous rainfall sensor');
     }
+    
+    this.log.info(`Finished creating accessories. Total sensors: ${this.sensors.length}`);
   }
 
   createCurrentRainSensor(name, stationId) {
@@ -87,10 +96,16 @@ class RainStatusPlatform {
     this.bindCharacteristic(sensorService, this.api.hap.Characteristic.OccupancyDetected, 'Current Rain Status', 
       () => this.currentRainState, null, (value) => value ? 'Rain Detected' : 'No Rain');
 
+    // Add updateData method to the accessory
+    accessory.updateData = () => {
+      this.log.debug(`🔔 Accessory ${name}: Updating OccupancyDetected to ${this.currentRainState}`);
+      sensorService.updateCharacteristic(this.api.hap.Characteristic.OccupancyDetected, this.currentRainState);
+    };
+
     accessory.addService(sensorService);
     this.api.registerPlatformAccessories('homebridge-rain-status', 'RainStatus', [accessory]);
     this.log.info(`Successfully registered current rain sensor accessory: ${name}`);
-    this.switches.push(accessory);
+    this.sensors.push(accessory);
   }
 
   createPreviousRainSensor(name, stationId, rainThresholds) {
@@ -104,10 +119,16 @@ class RainStatusPlatform {
     this.bindCharacteristic(sensorService, this.api.hap.Characteristic.ContactSensorState, 'Previous Rainfall', 
       () => this.previousRainState, null, (value) => value === 1 ? 'Rain Threshold Met' : 'Rain Threshold Not Met');
 
+    // Add updateData method to the accessory
+    accessory.updateData = () => {
+      this.log.debug(`🔔 Accessory ${name}: Updating ContactSensorState to ${this.previousRainState}`);
+      sensorService.updateCharacteristic(this.api.hap.Characteristic.ContactSensorState, this.previousRainState);
+    };
+
     accessory.addService(sensorService);
     this.api.registerPlatformAccessories('homebridge-rain-status', 'RainStatus', [accessory]);
     this.log.info(`Successfully registered previous rainfall sensor accessory: ${name}`);
-    this.switches.push(accessory);
+    this.sensors.push(accessory);
   }
 
   startPlatformPolling() {
@@ -202,10 +223,6 @@ class RainStatusPlatform {
       // Update platform-level state
       this.currentRainState = isRaining;
       
-      // TESTING: Force sensor to NOT detected (false) to verify HomeKit updates
-      this.log.info('🧪 TESTING: Forcing sensor to NOT detected for HomeKit sync test');
-      this.currentRainState = false;
-      
       // Google Nest pattern: Platform calls updateData() on all accessories
       this.log.info('🔔 Platform: Calling updateData() on all accessories');
       this.updateAllAccessories();
@@ -287,10 +304,6 @@ class RainStatusPlatform {
       // Update platform-level state
       this.previousRainState = contactState;
       
-      // TESTING: Force contact sensor to CONTACT_DETECTED (1) to verify HomeKit updates
-      this.log.info('🧪 TESTING: Forcing contact sensor to CONTACT_DETECTED for HomeKit sync test');
-      this.previousRainState = 1;
-      
       // Google Nest pattern: Platform calls updateData() on all accessories
       this.log.info('🔔 Platform: Calling updateData() on all accessories');
       this.updateAllAccessories();
@@ -303,7 +316,7 @@ class RainStatusPlatform {
   // Google Nest pattern: Platform calls updateData() on all accessories
   updateAllAccessories() {
     this.log.info('🔔 Platform: Updating all accessories');
-    this.switches.forEach(accessory => {
+    this.sensors.forEach(accessory => {
       this.log.debug(`🔔 Platform: Calling updateData() on accessory: ${accessory.displayName}`);
       accessory.updateData();
     });
@@ -358,10 +371,18 @@ class RainStatusPlatform {
     
     // Handle existing accessories that might still be switches
     // They will be updated to sensors on the next restart
-    this.switches.push(accessory);
+    this.sensors.push(accessory);
+    
+    // Add updateData method to existing accessories if they don't have one
+    if (!accessory.updateData) {
+      this.log.info(`Adding updateData method to existing accessory: ${accessory.displayName}`);
+      accessory.updateData = () => {
+        this.log.debug(`🔔 Existing accessory ${accessory.displayName}: updateData called but no specific logic implemented`);
+      };
+    }
   }
 }
 
 module.exports = (api) => {
   api.registerPlatform('homebridge-rain-status', 'RainStatus', RainStatusPlatform);
-}; 
+};No
