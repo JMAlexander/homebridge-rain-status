@@ -13,7 +13,7 @@ class RainStatusPlatform {
     this.api = api;
     
     this.log.info('🔔🔔🔔 Config received:', JSON.stringify(this.config, null, 2));
-    this.log.info('🔔🔔🔔 API object keys:', Object.keys(this.api));
+    //this.log.info('🔔🔔🔔 API object keys:', Object.keys(this.api));
     
     // Accessory storage
     this.sensors = [];
