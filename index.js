@@ -33,6 +33,15 @@ class RainStatusPlatform {
     this.log.debug('Current config:', JSON.stringify(this.config, null, 2));
     this.log.debug('Current sensors length:', this.sensors.length);
     
+    // Return the accessories immediately
+    this.log.info(`Returning ${this.sensors.length} accessories to Homebridge`);
+    callback(this.sensors);
+  }
+
+  // Modern Homebridge method: called after all accessories are configured
+  didFinishLaunching() {
+    this.log.info('🔔 didFinishLaunching called - creating accessories...');
+    
     // Create accessories if they don't exist
     if (this.sensors.length === 0) {
       this.log.info('No existing accessories found, creating new ones...');
@@ -43,10 +52,6 @@ class RainStatusPlatform {
     if (!this.isPolling) {
       this.startPlatformPolling();
     }
-    
-    // Return the accessories immediately
-    this.log.info(`Returning ${this.sensors.length} accessories to Homebridge`);
-    callback(this.sensors);
   }
 
   createAccessories() {
