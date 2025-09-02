@@ -561,6 +561,8 @@ class RainStatusPlatform {
         timeout: 10000
       });
 
+      this.log.debug('API response received:', JSON.stringify(obsResponse.data, null, 2));
+
       if (!obsResponse?.data?.properties) {
         throw new Error('Invalid API response structure');
       }
@@ -639,6 +641,8 @@ class RainStatusPlatform {
         headers: { 'Content-Type': 'application/json' }
       });
 
+      this.log.debug('ACIS API response:', JSON.stringify(response.data, null, 2));
+
       let previousDayRain = 0;
       let twoDayRain = 0;
       if (response.data && response.data.data) {
@@ -653,6 +657,8 @@ class RainStatusPlatform {
               if (date === yesterdayStr || date === dayBeforeYesterdayStr) {
                 twoDayRain += parsedValue;
               }
+            } else {
+              this.log.warn(`Invalid rainfall value for ${date}: ${value}`);
             }
           }
         }
