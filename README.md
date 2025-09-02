@@ -7,15 +7,15 @@ This Homebridge plugin combines two rain-related functionalities into a single p
 ## Features
 
 ### Current Rain Status
-- Creates a read-only switch that turns on when it's currently raining
+- Creates a read-only contact sensor that activates when it's currently raining
 - Uses real-time weather data from the National Weather Service
 - Detects various types of precipitation (rain, drizzle, showers, etc.)
 - Configurable check interval (minimum 1 minute)
 
 ### Previous Rainfall
-- Creates a read-only switch that turns on when rainfall exceeds a specified threshold
+- Creates a read-only contact sensor that activates when rainfall exceeds specified thresholds
 - Uses ACIS weather data to check the previous 48 hours of rainfall
-- Configurable rain threshold and check interval
+- Configurable rain thresholds and check interval
 - State is automatically updated based on rainfall data
 
 ## Installation
@@ -56,15 +56,15 @@ npm install -g homebridge-rain-status
 ## Configuration
 
 ### Current Rain Status
-- `name`: The name of the switch in HomeKit (default: "Current Rain Status")
+- `name`: The name of the contact sensor in HomeKit (default: "Current Rain Status")
 - `station_id`: The NWS weather station ID (default: "KPHL" for Philadelphia)
 - `check_interval`: How often to check for current rain in minutes (default: 5, minimum: 1)
 
 ### Previous Rainfall
-- `name`: The name of the switch in HomeKit (default: "Previous Rainfall")
+- `name`: The name of the contact sensor in HomeKit (default: "Previous Rainfall")
 - `station_id`: The ACIS weather station ID (default: "PHL" for Philadelphia)
-- `previous_day_threshold`: Amount of rain in the previous day that will trigger the switch (default: 0.1)
-- `two_day_threshold`: Amount of rain in the previous two days combined that will trigger the switch (default: 0.25)
+- `previous_day_threshold`: Amount of rain in the previous day that will trigger the sensor (default: 0.1)
+- `two_day_threshold`: Amount of rain in the previous two days combined that will trigger the sensor (default: 0.25)
 - `check_interval`: How often to check for rain in minutes (default: 60, minimum: 15)
 
 ## Finding Your Station IDs
@@ -88,7 +88,7 @@ Common NWS station IDs:
 
 ## Troubleshooting
 
-If the switches aren't updating:
+If the sensors aren't updating:
 1. Check the Homebridge logs for any error messages
 2. Verify your station IDs are correct
 3. Ensure your check intervals aren't too frequent
