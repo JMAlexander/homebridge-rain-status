@@ -615,21 +615,37 @@ class RainStatusPlatform {
     this.log.debug(`Starting previous rainfall check for station ${stationId}`);
     
     try {
-      // Calculate dates: we want yesterday and the day before yesterday
-      const today = new Date();
-      const yesterday = new Date(today);
-      yesterday.setDate(today.getDate() - 1);
-      const dayBeforeYesterday = new Date(today);
-      dayBeforeYesterday.setDate(today.getDate() - 2);
+      // Calculate dates in local timezone (Philadelphia Eastern Time)
+      const now = new Date();
+      this.log.debug(`Current local time: ${now.toString()}`);
+      this.log.debug(`Current UTC time: ${now.toISOString()}`);
+      
+      // Get local date components to avoid UTC conversion issues
+      const todayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const yesterdayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+      const dayBeforeYesterdayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 2);
+      const threeDaysAgoLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 3);
 
-      // Format as YYYY-MM-DD
-      const yesterdayStr = yesterday.toISOString().split('T')[0];
-      const dayBeforeYesterdayStr = dayBeforeYesterday.toISOString().split('T')[0];
+      // Format as YYYY-MM-DD using local date components
+      const formatLocalDate = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
 
-      // Request data for the past 2 days
+      const todayStr = formatLocalDate(todayLocal);
+      const yesterdayStr = formatLocalDate(yesterdayLocal);
+      const dayBeforeYesterdayStr = formatLocalDate(dayBeforeYesterdayLocal);
+      const threeDaysAgoStr = formatLocalDate(threeDaysAgoLocal);
+
+      this.log.debug(`Today (local): ${todayStr} - EXCLUDED from request`);
+      this.log.debug(`Date range: ${threeDaysAgoStr} to ${yesterdayStr} (excluding today)`);
+
+      // Request data for the past 3 days (excluding today)
       const requestBody = {
         sid: stationId,
-        sdate: dayBeforeYesterdayStr,
+        sdate: threeDaysAgoStr,
         edate: yesterdayStr,
         elems: [{ name: 'pcpn', interval: 'dly' }],
         meta: ['name']
@@ -645,17 +661,22 @@ class RainStatusPlatform {
 
       let previousDayRain = 0;
       let twoDayRain = 0;
+      let threeDayRain = 0;
       if (response.data && response.data.data) {
         for (const [date, value] of response.data.data) {
           if (value !== null) {
             const parsedValue = parseFloat(value);
             if (!isNaN(parsedValue)) {
+              this.log.debug(`${date} rainfall: ${value} inches`);
+              
               if (date === yesterdayStr) {
                 previousDayRain = parsedValue;
-                this.log.debug(`Yesterday (${date}) rainfall: ${value} inches`);
               }
               if (date === yesterdayStr || date === dayBeforeYesterdayStr) {
                 twoDayRain += parsedValue;
+              }
+              if (date === yesterdayStr || date === dayBeforeYesterdayStr || date === threeDaysAgoStr) {
+                threeDayRain += parsedValue;
               }
             } else {
               this.log.warn(`Invalid rainfall value for ${date}: ${value}`);
@@ -666,8 +687,9 @@ class RainStatusPlatform {
 
       this.log.info(`🔔 Previous day rainfall: ${previousDayRain.toFixed(2)} inches`);
       this.log.info(`🔔 Two-day total rainfall: ${twoDayRain.toFixed(2)} inches`);
+      this.log.info(`🔔 Three-day total rainfall: ${threeDayRain.toFixed(2)} inches`);
       
-      // Check thresholds
+      // Check thresholds (using original two-day logic, but now with 3 days of data for better accuracy)
       const previousState = this.previousRainState;
       const newState = (previousDayRain >= rainThresholds.previous_day_threshold) || 
                        (twoDayRain >= rainThresholds.two_day_threshold) ? 1 : 0;
