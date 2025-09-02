@@ -105,12 +105,11 @@ class CurrentRainAccessory extends RainStatusAccessory {
     this.updateData();
   }
   
-  // Getter method for current rain state - TEMPORARILY HARDCODED TO TRUE FOR TESTING
+  // Getter method for current rain state
   getCurrentRainState() {
-    const actualState = this.platform.currentRainState;
-    const testState = true; // TEMPORARY: Always return true for testing
-    this.log.debug(`🔔🔔🔔 getCurrentRainState called, actual: ${actualState}, returning TEST: ${testState}`);
-    return testState;
+    const state = this.platform.currentRainState;
+    this.log.debug(`🔔🔔🔔 getCurrentRainState called, returning: ${state}`);
+    return state;
   }
 }
 
@@ -141,12 +140,11 @@ class PreviousRainAccessory extends RainStatusAccessory {
     this.updateData();
   }
   
-  // Getter method for previous rain state - TEMPORARILY HARDCODED TO 1 FOR TESTING
+  // Getter method for previous rain state
   getPreviousRainState() {
-    const actualState = this.platform.previousRainState;
-    const testState = 1; // TEMPORARY: Always return 1 (contact detected) for testing
-    this.log.debug(`🔔🔔🔔 getPreviousRainState called, actual: ${actualState}, returning TEST: ${testState}`);
-    return testState;
+    const state = this.platform.previousRainState;
+    this.log.debug(`🔔🔔🔔 getPreviousRainState called, returning: ${state}`);
+    return state;
   }
 }
 
