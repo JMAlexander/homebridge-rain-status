@@ -52,63 +52,26 @@ class RainStatusPlatform {
     this.log.info('🔔🔔🔔 URLs configured:');
     this.log.info('🔔🔔🔔   - Current rain URL:', this.currentRainUrl);
     this.log.info('🔔🔔🔔   - Previous rain URL:', this.previousRainUrl);
+    
+    // 🔔🔔🔔 RESTORE THE WORKING APPROACH: Listen for didFinishLaunching event
+    if (this.api) {
+      this.log.info('🔔🔔🔔 Setting up didFinishLaunching event listener...');
+      this.api.on('didFinishLaunching', () => {
+        this.log.info('🔔🔔🔔 Homebridge finished launching, initializing accessories...');
+        this.createAccessories();
+        this.startPlatformPolling();
+      });
+      this.log.info('🔔🔔🔔 Event listener set up successfully');
+    } else {
+      this.log.warn('🔔🔔🔔 No API object available, cannot set up event listener');
+    }
+    
     this.log.info('🔔🔔🔔 RainStatus platform constructor completed');
   }
 
-  // Homebridge required method: return accessories (Google Nest pattern)
-  accessories(callback) {
-    this.log.info('🔔🔔🔔 Homebridge requesting accessories...');
-    this.log.info('🔔🔔🔔 Current sensors count:', this.sensors.length);
-    
-    // Create accessories if they don't exist
-    if (this.sensors.length === 0) {
-      this.log.info('🔔🔔🔔 No existing accessories found, creating new ones...');
-      this.createAccessories();
-    } else {
-      this.log.info('🔔🔔🔔 Existing accessories found, using cached ones');
-    }
-    
-    // Start platform-level polling after accessories are created
-    if (!this.isPolling) {
-      this.log.info('🔔🔔🔔 Starting platform-level polling...');
-      this.startPlatformPolling();
-    } else {
-      this.log.info('🔔🔔🔔 Platform-level polling already active');
-    }
-    
-    // Return the accessories to Homebridge (Google Nest pattern)
-    this.log.info(`🔔🔔🔔 Returning ${this.sensors.length} accessories to Homebridge`);
-    callback(this.sensors);
-    
-    this.log.info('🔔🔔🔔 accessories method completed');
-  }
+  // Note: accessories(callback) method removed - using event listener approach instead (like the working version)
 
-  // Modern Homebridge method: called after all accessories are configured
-  didFinishLaunching() {
-    this.log.info('🔔🔔🔔 didFinishLaunching method called!');
-    this.log.info('🔔🔔🔔 Current state:');
-    this.log.info('🔔🔔🔔   - sensors.length:', this.sensors.length);
-    this.log.info('🔔🔔🔔   - isPolling:', this.isPolling);
-    this.log.info('🔔🔔🔔   - config keys:', Object.keys(this.config));
-    
-    // Create accessories if they don't exist
-    if (this.sensors.length === 0) {
-      this.log.info('🔔🔔🔔 No existing accessories found, creating new ones...');
-      this.createAccessories();
-    } else {
-      this.log.info('🔔🔔🔔 Existing accessories found, skipping creation');
-    }
-    
-    // Start platform-level polling after accessories are created
-    if (!this.isPolling) {
-      this.log.info('🔔🔔🔔 Starting platform-level polling...');
-      this.startPlatformPolling();
-    } else {
-      this.log.info('🔔🔔🔔 Platform-level polling already active');
-    }
-    
-    this.log.info('🔔🔔🔔 didFinishLaunching method completed');
-  }
+  // Note: didFinishLaunching removed - using accessories(callback) method instead (Google Nest pattern)
 
   createAccessories() {
     this.log.info('🔔🔔🔔 createAccessories method called!');
