@@ -30,8 +30,8 @@ class RainStatusPlatform {
     this.sensors = [];
     
     // Platform-level state management
-    this.currentRainState = false;
-    this.previousRainState = false;
+            this.currentRainState = true;
+        this.previousRainState = false;
     
     // Platform-level polling management
     this.pollingIntervals = {};
