@@ -595,33 +595,8 @@ class RainStatusPlatform {
     });
   }
 
-  // REMOVED: configureAccessory - not used in Google Nest pattern (they don't use platform accessories)
-  // Legacy method - no longer used
-  configureAccessory(accessory) {
-    this.log.info(`🔔🔔🔔 configureAccessory called for: ${accessory.displayName}`);
-    this.log.info(`🔔🔔🔔 Accessory details:`);
-    this.log.info(`🔔🔔🔔   - UUID: ${accessory.UUID}`);
-    this.log.info(`🔔🔔🔔   - Type: ${accessory.context?.type || 'unknown'}`);
-    this.log.info(`🔔🔔🔔   - Services: ${accessory.services?.length || 0}`);
-    
-    // Handle existing accessories that might still be switches
-    // They will be updated to sensors on the next restart
-    this.log.info('🔔🔔🔔 Adding accessory to sensors array...');
-    this.sensors.push(accessory);
-    this.log.info(`🔔🔔🔔 Accessory added. Total sensors: ${this.sensors.length}`);
-    
-    // Add updateData method to existing accessories if they don't have one
-    if (!accessory.updateData) {
-      this.log.info(`🔔🔔🔔 Adding updateData method to existing accessory: ${accessory.displayName}`);
-      accessory.updateData = () => {
-        this.log.info(`🔔🔔🔔 Existing accessory ${accessory.displayName}: updateData called but no specific logic implemented`);
-      };
-    } else {
-      this.log.info(`🔔🔔🔔 Accessory ${accessory.displayName} already has updateData method`);
-    }
-    
-    this.log.info(`🔔🔔🔔 configureAccessory completed for: ${accessory.displayName}`);
-  }
+  // REMOVED: configureAccessory - Google Nest pattern doesn't use platform accessories
+  // They create accessories directly, not platform accessories that need to be configured
 }
 
 module.exports = (api) => {
