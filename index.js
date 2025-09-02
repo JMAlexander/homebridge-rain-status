@@ -390,6 +390,14 @@ class RainStatusPlatform {
     });
   }
 
+  // Manual trigger method for testing - set current rain state
+  setCurrentRainState(isRaining) {
+    this.log.info(`🔔🔔🔔 MANUAL UPDATE: Setting current rain state to: ${isRaining}`);
+    this.currentRainState = isRaining;
+    this.updateAllAccessories();
+    this.log.info(`🔔🔔🔔 MANUAL UPDATE: Current rain state updated to: ${this.currentRainState}`);
+  }
+
   unload() {
     this.log.info('Unloading RainStatus platform...');
     // Clear all polling intervals
