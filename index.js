@@ -12,7 +12,7 @@ class RainStatusAccessory {
     this.platform = platform;
     this.api = api;
     
-    this.log.info(`🔔🔔🔔 Initializing ${accessoryType} rain accessory: ${name}`);
+    this.log.info(`Initializing ${accessoryType} rain accessory: ${name}`);
     
     // Generate UUID for this accessory
     const id = this.api.hap.uuid.generate('rain-status.' + accessoryType + '.' + name);
@@ -30,8 +30,6 @@ class RainStatusAccessory {
     
     // Initialize boundCharacteristics array for this accessory instance
     this.boundCharacteristics = [];
-    
-    this.log.info(`🔔🔔🔔 Base accessory ${name} initialized with UUID: ${id}`);
   }
   
   // Google Nest pattern: getServices method
@@ -41,12 +39,9 @@ class RainStatusAccessory {
   
   // Google Nest pattern: bindCharacteristic method
   bindCharacteristic(service, characteristic, desc, getFunc, setFunc, format) {
-    this.log.debug(`🔔🔔🔔 Binding characteristic ${desc} for ${this.name}`);
-    
     const actual = service.getCharacteristic(characteristic)
       .on('get', function (callback) {
         const val = getFunc.bind(this)();
-        this.log.debug(`🔔🔔🔔 ${desc} getter called, returning: ${val}`);
         if (callback) callback(null, val);
       }.bind(this))
       .on('change', function (change) {
@@ -54,7 +49,7 @@ class RainStatusAccessory {
         if (format && disp !== null) {
           disp = format(disp);
         }
-        this.log.debug(`🔔🔔🔔 ${desc} for ${this.name} changed to: ${disp}`);
+        this.log.debug(`${desc} for ${this.name} changed to: ${disp}`);
       }.bind(this));
       
     if (setFunc) {
@@ -64,14 +59,11 @@ class RainStatusAccessory {
     // Track bound characteristics for getValue() calls
     this.boundCharacteristics.push([service, characteristic]);
     
-    this.log.debug(`🔔🔔🔔 Characteristic ${desc} bound successfully. Total bound: ${this.boundCharacteristics.length}`);
     return actual;
   }
   
   // Google Nest pattern: updateData method
   updateData() {
-    this.log.info(`🔔🔔🔔 updateData called for ${this.name}, triggering ${this.boundCharacteristics.length} characteristics`);
-    
     this.boundCharacteristics.map(function (c) {
       c[0].getCharacteristic(c[1]).getValue();
     });
@@ -83,8 +75,6 @@ class CurrentRainAccessory extends RainStatusAccessory {
   constructor(log, name, platform, api) {
     // Call parent constructor
     super(log, name, 'current', platform, api);
-    
-    this.log.info(`🔔🔔🔔 Creating CurrentRainAccessory: ${name}`);
     
     // Create ContactSensor service
     const sensorService = this.addService(Service.ContactSensor, name);
@@ -99,7 +89,7 @@ class CurrentRainAccessory extends RainStatusAccessory {
       (value) => value === 1 ? 'Rain Detected' : 'No Rain'
     );
     
-    this.log.info(`🔔🔔🔔 CurrentRainAccessory ${name} created with OccupancySensor service`);
+    this.log.info(`Current rain sensor created: ${name}`);
     
     // Call updateData once at the end of constructor (Google Nest pattern)
     this.updateData();
@@ -108,7 +98,6 @@ class CurrentRainAccessory extends RainStatusAccessory {
   // Getter method for current rain state
   getCurrentRainState() {
     const state = this.platform.currentRainState ? 1 : 0; // Convert boolean to ContactSensorState (1=contact, 0=no contact)
-    this.log.debug(`🔔🔔🔔 getCurrentRainState called, platform state: ${this.platform.currentRainState}, returning: ${state}`);
     return state;
   }
 }
@@ -118,8 +107,6 @@ class PreviousRainAccessory extends RainStatusAccessory {
   constructor(log, name, platform, api) {
     // Call parent constructor
     super(log, name, 'previous', platform, api);
-    
-    this.log.info(`🔔🔔🔔 Creating PreviousRainAccessory: ${name}`);
     
     // Create ContactSensor service
     const sensorService = this.addService(Service.ContactSensor, name);
@@ -134,7 +121,7 @@ class PreviousRainAccessory extends RainStatusAccessory {
       (value) => value === 1 ? 'Rain Threshold Met' : 'Rain Threshold Not Met'
     );
     
-    this.log.info(`🔔🔔🔔 PreviousRainAccessory ${name} created with ContactSensor service`);
+    this.log.info(`Previous rainfall sensor created: ${name}`);
     
     // Call updateData once at the end of constructor (Google Nest pattern)
     this.updateData();
@@ -143,7 +130,6 @@ class PreviousRainAccessory extends RainStatusAccessory {
   // Getter method for previous rain state
   getPreviousRainState() {
     const state = this.platform.previousRainState;
-    this.log.debug(`🔔🔔🔔 getPreviousRainState called, returning: ${state}`);
     return state;
   }
 }
@@ -152,7 +138,7 @@ class RainStatusPlatform {
   constructor(log, config, api) {
     // Safety check for log parameter - provide fallback if undefined
     if (!log) {
-      console.log('🔔🔔🔔 WARNING: log parameter is undefined, using console.log as fallback');
+      console.log('WARNING: log parameter is undefined, using console.log as fallback');
       this.log = {
         info: (msg) => console.log(`[INFO] ${msg}`),
         debug: (msg) => console.log(`[DEBUG] ${msg}`),
@@ -163,16 +149,8 @@ class RainStatusPlatform {
       this.log = log;
     }
     
-    this.log.info('🔔🔔🔔 RainStatus platform constructor called');
-    this.log.info('🔔🔔🔔 Constructor parameters:');
-    this.log.info('🔔🔔🔔   - log type:', typeof log);
-    this.log.info('🔔🔔🔔   - config type:', typeof config);
-    this.log.info('🔔🔔🔔   - api type:', typeof api);
-    
     this.config = config;
     this.api = api;
-    
-    this.log.info('🔔🔔🔔 Config received:', JSON.stringify(this.config, null, 2));
     
     // Google Nest pattern: Accessory lookup storage
     this.accessoryLookup = {};
@@ -186,7 +164,6 @@ class RainStatusPlatform {
     this.isPolling = false;
     
     // API configuration
-    // Use station_id from config instead of lat/lng for current rain
     if (this.config.current_rain && this.config.current_rain.station_id) {
       this.currentRainUrl = `https://api.weather.gov/stations/${this.config.current_rain.station_id}/observations/latest`;
     } else {
@@ -194,23 +171,17 @@ class RainStatusPlatform {
     }
     this.previousRainUrl = 'https://data.rcc-acis.org/StnData';
     
-    this.log.info('🔔🔔🔔 URLs configured:');
-    this.log.info('🔔🔔🔔   - Current rain URL:', this.currentRainUrl);
-    this.log.info('🔔🔔🔔   - Previous rain URL:', this.previousRainUrl);
-    
-    this.log.info('🔔🔔🔔 RainStatus platform constructor completed');
+    this.log.info('RainStatus platform initialized');
   }
 
   // Google Nest pattern: accessories method that returns accessory instances
   accessories(callback) {
-    this.log.info('🔔🔔🔔 Platform accessories method called');
-    
     const foundAccessories = this.createAccessories();
     
     // Start polling after accessories are created
     this.startPlatformPolling();
     
-    this.log.info(`🔔🔔🔔 Returning ${foundAccessories.length} accessories to Homebridge`);
+    this.log.info(`Returning ${foundAccessories.length} accessories to Homebridge`);
     
     if (callback) {
       callback(foundAccessories);
@@ -220,138 +191,36 @@ class RainStatusPlatform {
   }
 
   createAccessories() {
-    this.log.info('🔔🔔🔔 createAccessories method called - Google Nest pattern');
-    this.log.info('🔔🔔🔔 Config analysis:');
-    this.log.info('🔔🔔🔔   - current_rain exists:', !!this.config.current_rain);
-    this.log.info('🔔🔔🔔   - previous_rain exists:', !!this.config.previous_rain);
-    
     const foundAccessories = [];
     
     // Create current rain sensor if configured
     if (this.config.current_rain) {
-      this.log.info('🔔🔔🔔 Current rain configuration found, creating CurrentRainAccessory...');
       const currentName = this.config.current_rain.name || 'Current Rain Status';
       const currentAccessory = new CurrentRainAccessory(this.log, currentName, this, this.api);
       
       this.accessoryLookup[currentName] = currentAccessory;
       foundAccessories.push(currentAccessory);
-      this.log.info(`🔔🔔🔔 CurrentRainAccessory created: ${currentName}`);
     } else {
-      this.log.warn('🔔🔔🔔 No current_rain configuration found, skipping current rain sensor');
+      this.log.warn('No current_rain configuration found, skipping current rain sensor');
     }
     
     // Create previous rain sensor if configured
     if (this.config.previous_rain) {
-      this.log.info('🔔🔔🔔 Previous rain configuration found, creating PreviousRainAccessory...');
       const previousName = this.config.previous_rain.name || 'Previous Rainfall';
       const previousAccessory = new PreviousRainAccessory(this.log, previousName, this, this.api);
       
       this.accessoryLookup[previousName] = previousAccessory;
       foundAccessories.push(previousAccessory);
-      this.log.info(`🔔🔔🔔 PreviousRainAccessory created: ${previousName}`);
     } else {
-      this.log.warn('🔔🔔🔔 No previous_rain configuration found, skipping previous rainfall sensor');
+      this.log.warn('No previous_rain configuration found, skipping previous rainfall sensor');
     }
     
-    this.log.info(`🔔🔔🔔 Created ${foundAccessories.length} accessory instances`);
-    this.log.info('🔔🔔🔔 createAccessories method completed');
+    this.log.info(`Created ${foundAccessories.length} accessory instances`);
     
     return foundAccessories;
   }
 
-  // REMOVED: createCurrentRainSensor - now using CurrentRainAccessory class
-  // REMOVED: createPreviousRainSensor - now using PreviousRainAccessory class
-  
-  // Legacy method - no longer used in Google Nest pattern
-  createCurrentRainSensor(name, stationId) {
-    this.log.info(`🔔🔔🔔 createCurrentRainSensor called with name: ${name}, stationId: ${stationId}`);
-    
-    try {
-      this.log.info('🔔🔔🔔 Creating platformAccessory...');
-      const accessory = new this.api.platformAccessory(name, this.api.hap.uuid.generate(name));
-      this.log.info('🔔🔔🔔 PlatformAccessory created successfully');
-      
-      this.log.info('🔔🔔🔔 Creating OccupancySensor service...');
-      const sensorService = new this.api.hap.Service.OccupancySensor(name);
-      this.log.info('🔔🔔🔔 OccupancySensor service created successfully');
-      
-      // Initialize bound characteristics array for this accessory
-      accessory.boundCharacteristics = [];
-      
-      this.log.info('🔔🔔🔔 Binding characteristic...');
-      // Bind the characteristic using Google Nest pattern
-      this.bindCharacteristic(sensorService, this.api.hap.Characteristic.OccupancyDetected, 'Current Rain Status', 
-        () => this.currentRainState, null, (value) => value ? 'Rain Detected' : 'No Rain');
-      this.log.info('🔔🔔🔔 Characteristic bound successfully');
 
-      // Add updateData method to the accessory
-      accessory.updateData = () => {
-        this.log.info(`🔔🔔🔔 Accessory ${name}: updateData called, updating OccupancyDetected to ${this.currentRainState}`);
-        sensorService.updateCharacteristic(this.api.hap.Characteristic.OccupancyDetected, this.currentRainState);
-      };
-      this.log.info('🔔🔔🔔 updateData method added to accessory');
-
-      this.log.info('🔔🔔🔔 Adding service to accessory...');
-      accessory.addService(sensorService);
-      this.log.info('🔔🔔🔔 Service added to accessory successfully');
-      
-      this.log.info('🔔🔔🔔 Registering platform accessories...');
-      this.api.registerPlatformAccessories('homebridge-rain-status', 'RainStatus', [accessory]);
-      this.log.info(`🔔🔔🔔 Successfully registered current rain sensor accessory: ${name}`);
-      
-      this.log.info('🔔🔔🔔 Adding accessory to sensors array...');
-      this.sensors.push(accessory);
-      this.log.info(`🔔🔔🔔 Accessory added to sensors array. Total sensors: ${this.sensors.length}`);
-      
-    } catch (error) {
-      this.log.error(`🔔🔔🔔 ERROR creating current rain sensor: ${error.message}`);
-      this.log.error(`🔔🔔🔔 Error stack: ${error.stack}`);
-    }
-  }
-
-  createPreviousRainSensor(name, stationId, rainThresholds) {
-    this.log.info(`🔔🔔🔔 createPreviousRainSensor called with name: ${name}, stationId: ${stationId}`);
-    this.log.info(`🔔🔔🔔 Rain thresholds: Previous day: ${rainThresholds.previous_day_threshold} inches, Two-day: ${rainThresholds.two_day_threshold} inches`);
-    
-    try {
-      this.log.info('🔔🔔🔔 Creating platformAccessory...');
-      const accessory = new this.api.platformAccessory(name, this.api.hap.uuid.generate(name));
-      this.log.info('🔔🔔🔔 PlatformAccessory created successfully');
-      
-      this.log.info('🔔🔔🔔 Creating ContactSensor service...');
-      const sensorService = new this.api.hap.Service.ContactSensor(name);
-      this.log.info('🔔🔔🔔 ContactSensor service created successfully');
-      
-      this.log.info('🔔🔔🔔 Binding characteristic...');
-      // Bind the characteristic using Google Nest pattern
-      this.bindCharacteristic(sensorService, this.api.hap.Characteristic.ContactSensorState, 'Previous Rainfall', 
-        () => this.previousRainState, null, (value) => value === 1 ? 'Rain Threshold Met' : 'Rain Threshold Not Met');
-      this.log.info('🔔🔔🔔 Characteristic bound successfully');
-
-      // Add updateData method to the accessory
-      accessory.updateData = () => {
-        this.log.info(`🔔🔔🔔 Accessory ${name}: updateData called, updating ContactSensorState to ${this.previousRainState}`);
-        sensorService.updateCharacteristic(this.api.hap.Characteristic.ContactSensorState, this.previousRainState);
-      };
-      this.log.info('🔔🔔🔔 updateData method added to accessory');
-
-      this.log.info('🔔🔔🔔 Adding service to accessory...');
-      accessory.addService(sensorService);
-      this.log.info('🔔🔔🔔 Service added to accessory successfully');
-      
-      this.log.info('🔔🔔🔔 Registering platform accessories...');
-      this.api.registerPlatformAccessories('homebridge-rain-status', 'RainStatus', [accessory]);
-      this.log.info(`🔔🔔🔔 Successfully registered previous rainfall sensor accessory: ${name}`);
-      
-      this.log.info('🔔🔔🔔 Adding accessory to sensors array...');
-      this.sensors.push(accessory);
-      this.log.info(`🔔🔔🔔 Accessory added to sensors array. Total sensors: ${this.sensors.length}`);
-      
-    } catch (error) {
-      this.log.error(`🔔🔔🔔 ERROR creating previous rainfall sensor: ${error.message}`);
-      this.log.error(`🔔🔔🔔 Error stack: ${error.stack}`);
-    }
-  }
 
   startPlatformPolling() {
     if (this.isPolling) {
@@ -360,7 +229,7 @@ class RainStatusPlatform {
     }
 
     this.isPolling = true;
-    this.log.info('Starting platform-level polling...');
+    this.log.info('Starting weather data polling...');
 
     // Start current rain polling
     if (this.config.current_rain && this.config.current_rain.station_id) {
@@ -377,11 +246,9 @@ class RainStatusPlatform {
     const stationId = this.config.current_rain.station_id;
     const checkInterval = (this.config.current_rain.check_interval || 5) * 60 * 1000; // Convert minutes to milliseconds
     
-    this.log.info(`Starting platform-level current rain polling for station ${stationId}`);
-    this.log.debug(`Polling interval: ${checkInterval / 60000} minutes`);
+    this.log.info(`Starting current rain polling for station ${stationId} (${checkInterval / 60000} min intervals)`);
     
     const intervalId = setInterval(() => {
-      this.log.debug('Current rain polling interval triggered...');
       this.checkCurrentRain().catch(error => {
         this.log.error('Current rain check failed:', error.message);
       });
@@ -390,7 +257,6 @@ class RainStatusPlatform {
     this.pollingIntervals['current_rain'] = intervalId;
     
     // Initial check
-    this.log.debug('Performing initial current rain check...');
     this.checkCurrentRain().catch(error => {
       this.log.error('Initial current rain check failed:', error.message);
     });
@@ -400,11 +266,9 @@ class RainStatusPlatform {
     const stationId = this.config.previous_rain.station_id;
     const checkInterval = (this.config.previous_rain.check_interval || 60) * 60 * 1000; // Convert minutes to milliseconds
     
-    this.log.info(`🔔 Starting previous rain polling for station ${stationId}`);
-    this.log.debug(`Polling interval: ${checkInterval / 60000} minutes`);
+    this.log.info(`Starting previous rain polling for station ${stationId} (${checkInterval / 60000} min intervals)`);
     
     const intervalId = setInterval(() => {
-      this.log.debug('Previous rain polling interval triggered...');
       this.checkPreviousRain().catch(error => {
         this.log.error('Previous rain check failed:', error.message);
       });
@@ -413,145 +277,23 @@ class RainStatusPlatform {
     this.pollingIntervals['previous_rain'] = intervalId;
     
     // Initial check
-    this.log.debug('Performing initial previous rain check...');
     this.checkPreviousRain().catch(error => {
       this.log.error('Initial previous rain check failed:', error.message);
     });
   }
 
-  async checkCurrentRain() {
-    this.log.info('🔔 Platform: Checking current rain status...');
-    
-    try {
-      // Get station info first
-      const stationResponse = await axios.get(this.currentRainUrl);
-      const stationUrl = stationResponse.data.properties.forecast;
-      
-      // Get current weather
-      const weatherResponse = await axios.get(stationUrl);
-      const data = weatherResponse.data;
-      
-      this.log.debug('🔔 Current rain API response:', JSON.stringify(data));
-      
-      // Check if it's currently raining
-      const isRaining = data.properties && 
-        data.properties.periods && 
-        data.properties.periods.length > 0 &&
-        data.properties.periods[0].shortForecast &&
-        data.properties.periods[0].shortForecast.toLowerCase().includes('rain');
-      
-      this.log.info('🔔 Platform: Is it currently raining?', isRaining);
-      
-      // Update platform-level state
-      this.currentRainState = isRaining;
-      
-      // Google Nest pattern: Platform calls updateData() on all accessories
-      this.log.info('🔔 Platform: Calling updateData() on all accessories');
-      this.updateAllAccessories();
-      
-    } catch (error) {
-      this.log.error('Platform error checking current rain:', error.message);
-    }
-  }
-
-  async checkPreviousRain() {
-    this.log.info('🔔 Platform: Checking previous rain status...');
-    
-    try {
-      const stationId = this.config.previous_rain.station_id;
-      
-      // Calculate dates for yesterday and day before yesterday
-      const today = new Date();
-      const yesterday = new Date(today);
-      yesterday.setDate(today.getDate() - 1);
-      const dayBeforeYesterday = new Date(today);
-      dayBeforeYesterday.setDate(today.getDate() - 2);
-      
-      const yesterdayStr = yesterday.toISOString().split('T')[0];
-      const dayBeforeYesterdayStr = dayBeforeYesterday.toISOString().split('T')[0];
-      
-      this.log.debug('🔔 Platform: Checking rainfall for:', yesterdayStr, 'and', dayBeforeYesterdayStr);
-      
-      const requestBody = {
-        sid: stationId,
-        sdate: dayBeforeYesterdayStr,
-        edate: yesterdayStr,
-        elems: [{ name: 'pcpn', interval: 'dly' }],
-        meta: ['name']
-      };
-      
-      const response = await axios.post(this.previousRainUrl, requestBody, {
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      this.log.debug('🔔 Platform: Previous rain API response:', JSON.stringify(response.data));
-      
-      let previousDayRain = 0;
-      let twoDayRain = 0;
-      if (response.data && response.data.data) {
-        for (const [date, value] of response.data.data) {
-          if (value !== null) {
-            const parsedValue = parseFloat(value);
-            if (!isNaN(parsedValue)) {
-              if (date === yesterdayStr) {
-                previousDayRain = parsedValue;
-                this.log.debug(`🔔 Platform: Yesterday (${date}) rainfall: ${value} inches`);
-              }
-              if (date === yesterdayStr || date === dayBeforeYesterdayStr) {
-                twoDayRain += parsedValue;
-              }
-            }
-          }
-        }
-      }
-
-      this.log.info(`🔔 Platform: Previous day rainfall: ${previousDayRain.toFixed(2)} inches`);
-      this.log.info(`🔔 Platform: Two-day total rainfall: ${twoDayRain.toFixed(2)} inches`);
-      
-      // Check thresholds
-      const previousDayThreshold = this.config.previous_rain.previous_day_threshold;
-      const twoDayThreshold = this.config.previous_rain.two_day_threshold;
-      
-      const previousDayExceeded = previousDayRain >= previousDayThreshold;
-      const twoDayExceeded = (previousDayRain + twoDayRain) >= twoDayThreshold;
-      
-      this.log.info('🔔 Platform: Previous day threshold exceeded?', previousDayExceeded, `(${previousDayRain} >= ${previousDayThreshold})`);
-      this.log.info('🔔 Platform: Two-day threshold exceeded?', twoDayExceeded, `(${previousDayRain + twoDayRain} >= ${twoDayThreshold})`);
-      
-      // Determine contact sensor state (1 = open/contact detected, 0 = closed/no contact)
-      const contactState = (previousDayExceeded || twoDayExceeded) ? 1 : 0;
-      
-      this.log.info('🔔 Platform: Setting ContactSensorState to:', contactState);
-      
-      // Update platform-level state
-      this.previousRainState = contactState;
-      
-      // Google Nest pattern: Platform calls updateData() on all accessories
-      this.log.info('🔔 Platform: Calling updateData() on all accessories');
-      this.updateAllAccessories();
-      
-    } catch (error) {
-      this.log.error('Platform error checking previous rainfall:', error.message);
-    }
-  }
-
   // Google Nest pattern: Platform calls updateData() on all accessories
   updateAllAccessories() {
-    this.log.info('🔔 Platform: Updating all accessories - Google Nest pattern');
     Object.values(this.accessoryLookup).forEach(accessory => {
-      this.log.debug(`🔔 Platform: Calling updateData() on accessory: ${accessory.name}`);
       accessory.updateData();
     });
   }
 
-  // Weather API methods restored from master branch
   async checkCurrentRain() {
     const stationId = this.config.current_rain?.station_id || 'KPHL';
-    this.log.debug(`Starting current rain check for station ${stationId}`);
     
     try {
       const obsUrl = `https://api.weather.gov/stations/${stationId}/observations/latest`;
-      this.log.debug(`Making API request to: ${obsUrl}`);
       
       const obsResponse = await axios.get(obsUrl, {
         headers: {
@@ -560,8 +302,6 @@ class RainStatusPlatform {
         },
         timeout: 10000
       });
-
-      this.log.debug('API response received:', JSON.stringify(obsResponse.data, null, 2));
 
       if (!obsResponse?.data?.properties) {
         throw new Error('Invalid API response structure');
@@ -574,8 +314,6 @@ class RainStatusPlatform {
         throw new Error('No weather description available');
       }
 
-      this.log.debug(`Weather description: ${weatherDescription}`);
-
       const weatherTerms = [
         'rain', 'drizzle', 'shower', 'precipitation',
         'mist', 'fog', 'drizzle', 'light rain',
@@ -583,25 +321,18 @@ class RainStatusPlatform {
       ];
       
       const isRaining = weatherTerms.some(term => weatherDescription.includes(term));
-      this.log.debug(`Rain detection result: ${isRaining ? 'Rain detected' : 'No rain'}`);
       
       // Update platform state
       const previousState = this.currentRainState;
       this.currentRainState = isRaining;
       
       if (previousState !== isRaining) {
-        this.log.info(`🔔 Weather conditions changed: ${isRaining ? 'Rain detected' : 'No rain'}`);
-        this.log.info(`🔔 Weather description: ${weatherDescription}`);
+        this.log.info(`🔔 Current weather: ${isRaining ? 'Rain detected' : 'No rain'} - ${weatherDescription}`);
         this.updateAllAccessories();
-      } else {
-        this.log.debug(`Weather conditions unchanged: ${isRaining ? 'Still raining' : 'Still no rain'}`);
       }
 
     } catch (error) {
       this.log.error('Error checking current rain:', error.message);
-      if (error.response) {
-        this.log.debug('Error response:', JSON.stringify(error.response.data, null, 2));
-      }
     }
   }
 
@@ -612,16 +343,11 @@ class RainStatusPlatform {
       two_day_threshold: this.config.previous_rain?.two_day_threshold || 0.25
     };
     
-    this.log.debug(`Starting previous rainfall check for station ${stationId}`);
-    
     try {
-      // Calculate dates in local timezone (Philadelphia Eastern Time)
+      // Calculate dates in local timezone
       const now = new Date();
-      this.log.debug(`Current local time: ${now.toString()}`);
-      this.log.debug(`Current UTC time: ${now.toISOString()}`);
       
       // Get local date components to avoid UTC conversion issues
-      const todayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const yesterdayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
       const dayBeforeYesterdayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 2);
       const threeDaysAgoLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 3);
@@ -634,13 +360,9 @@ class RainStatusPlatform {
         return `${year}-${month}-${day}`;
       };
 
-      const todayStr = formatLocalDate(todayLocal);
       const yesterdayStr = formatLocalDate(yesterdayLocal);
       const dayBeforeYesterdayStr = formatLocalDate(dayBeforeYesterdayLocal);
       const threeDaysAgoStr = formatLocalDate(threeDaysAgoLocal);
-
-      this.log.debug(`Today (local): ${todayStr} - EXCLUDED from request`);
-      this.log.debug(`Date range: ${threeDaysAgoStr} to ${yesterdayStr} (excluding today)`);
 
       // Request data for the past 3 days (excluding today)
       const requestBody = {
@@ -650,25 +372,20 @@ class RainStatusPlatform {
         elems: [{ name: 'pcpn', interval: 'dly' }],
         meta: ['name']
       };
-      
-      this.log.debug('Making ACIS API request with body:', JSON.stringify(requestBody, null, 2));
 
       const response = await axios.post('https://data.rcc-acis.org/StnData', requestBody, {
         headers: { 'Content-Type': 'application/json' }
       });
 
-      this.log.debug('ACIS API response:', JSON.stringify(response.data, null, 2));
-
       let previousDayRain = 0;
       let twoDayRain = 0;
       let threeDayRain = 0;
+      
       if (response.data && response.data.data) {
         for (const [date, value] of response.data.data) {
           if (value !== null) {
             const parsedValue = parseFloat(value);
             if (!isNaN(parsedValue)) {
-              this.log.debug(`${date} rainfall: ${value} inches`);
-              
               if (date === yesterdayStr) {
                 previousDayRain = parsedValue;
               }
@@ -678,18 +395,12 @@ class RainStatusPlatform {
               if (date === yesterdayStr || date === dayBeforeYesterdayStr || date === threeDaysAgoStr) {
                 threeDayRain += parsedValue;
               }
-            } else {
-              this.log.warn(`Invalid rainfall value for ${date}: ${value}`);
             }
           }
         }
       }
 
-      this.log.info(`🔔 Previous day rainfall: ${previousDayRain.toFixed(2)} inches`);
-      this.log.info(`🔔 Two-day total rainfall: ${twoDayRain.toFixed(2)} inches`);
-      this.log.info(`🔔 Three-day total rainfall: ${threeDayRain.toFixed(2)} inches`);
-      
-      // Check thresholds (using original two-day logic, but now with 3 days of data for better accuracy)
+      // Check thresholds
       const previousState = this.previousRainState;
       const newState = (previousDayRain >= rainThresholds.previous_day_threshold) || 
                        (twoDayRain >= rainThresholds.two_day_threshold) ? 1 : 0;
@@ -697,33 +408,27 @@ class RainStatusPlatform {
       this.previousRainState = newState;
       
       if (previousState !== newState) {
-        this.log.info(`🔔 Rain conditions ${newState ? 'met' : 'not met'}: Previous day >= ${rainThresholds.previous_day_threshold}" (${previousDayRain.toFixed(2)}") OR Two-day total >= ${rainThresholds.two_day_threshold}" (${twoDayRain.toFixed(2)}")`);
+        this.log.info(`🔔 Rainfall totals: Previous day: ${previousDayRain.toFixed(2)}", Two-day: ${twoDayRain.toFixed(2)}", Three-day: ${threeDayRain.toFixed(2)}"`);
+        this.log.info(`🔔 Rain conditions ${newState ? 'met' : 'not met'}: Thresholds (${rainThresholds.previous_day_threshold}" / ${rainThresholds.two_day_threshold}")`);
         this.updateAllAccessories();
-      } else {
-        this.log.debug(`Rain status unchanged: ${newState ? 'Still meeting conditions' : 'Still not meeting conditions'}`);
       }
 
     } catch (error) {
       this.log.error('Error checking previous rainfall:', error.message);
-      if (error.response) {
-        this.log.debug('Error response:', JSON.stringify(error.response.data, null, 2));
-      }
     }
   }
 
   // Manual trigger method for testing - set current rain state
   setCurrentRainState(isRaining) {
-    this.log.info(`🔔🔔🔔 MANUAL UPDATE: Setting current rain state to: ${isRaining}`);
+    this.log.info(`Manual update: Setting current rain state to: ${isRaining}`);
     this.currentRainState = isRaining;
     this.updateAllAccessories();
-    this.log.info(`🔔🔔🔔 MANUAL UPDATE: Current rain state updated to: ${this.currentRainState}`);
   }
 
   unload() {
     this.log.info('Unloading RainStatus platform...');
     // Clear all polling intervals
     Object.entries(this.pollingIntervals).forEach(([key, intervalId]) => {
-      this.log.debug(`Clearing polling interval for key: ${key}`);
       clearInterval(intervalId);
     });
     this.pollingIntervals = {};
@@ -731,45 +436,10 @@ class RainStatusPlatform {
     this.log.info('Stopped all polling intervals');
   }
 
-  // Google Nest pattern: Bind characteristic with getter and change handler
-  bindCharacteristic(service, characteristic, desc, getFunc, setFunc, format) {
-    const actual = service.getCharacteristic(characteristic)
-      .on('get', function (callback) {
-        const val = getFunc.bind(this)();
-        if (callback) callback(null, val);
-      }.bind(this))
-      .on('change', function (change) {
-        let disp = change.newValue;
-        if (format && disp !== null) {
-          disp = format(disp);
-        }
-        this.log.debug(desc + ' for ' + this.name + ' is: ' + disp);
-      }.bind(this));
-    if (setFunc) {
-      actual.on('set', setFunc.bind(this));
-    }
-    
-    // Google Nest pattern: track bound characteristics for getValue() calls
-    this.boundCharacteristics.push([service, characteristic]);
-    
-    return actual;
-  }
 
-  // Google Nest pattern: Update data by calling getValue() on all bound characteristics
-  updateData() {
-    this.boundCharacteristics.map(function (c) {
-      c[0].getCharacteristic(c[1]).getValue();
-    });
-  }
-
-  // REMOVED: configureAccessory - Google Nest pattern doesn't use platform accessories
-  // They create accessories directly, not platform accessories that need to be configured
 }
 
 module.exports = (api) => {
-  console.log('🔔🔔🔔 homebridge-rain-status module loading...');
-  console.log('🔔🔔🔔 API object received:', typeof api);
-  
   // Set up global references (Google Nest pattern)
   Accessory = api.hap.Accessory;
   Service = api.hap.Service;
@@ -787,16 +457,9 @@ module.exports = (api) => {
     RainStatusAccessory.prototype[methodName] = originalPrototype[methodName];
   }
   
-  console.log('🔔🔔🔔 Inheritance set up for RainStatusAccessory');
-  
   try {
-    console.log('🔔🔔🔔 Registering RainStatus platform...');
     api.registerPlatform('homebridge-rain-status', 'RainStatus', RainStatusPlatform);
-    console.log('🔔🔔🔔 RainStatus platform registered successfully');
   } catch (error) {
-    console.error('🔔🔔🔔 ERROR registering platform:', error.message);
-    console.error('🔔🔔🔔 Error stack:', error.stack);
+    console.error('ERROR registering platform:', error.message);
   }
-  
-  console.log('🔔🔔🔔 homebridge-rain-status module loaded successfully');
 };
