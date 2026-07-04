@@ -1,6 +1,6 @@
 {
   "name": "homebridge-rain-status",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Homebridge plugin that combines current rain status and previous rainfall monitoring",
   "main": "index.js",
   "scripts": {
@@ -15,7 +15,8 @@
   "author": "Jeffrey Alexander",
   "license": "MIT",
   "engines": {
-    "homebridge": ">=1.0.0"
+    "homebridge": "^1.6.0 || ^2.0.0",
+    "node": ">=18.0.0"
   },
   "dependencies": {
     "axios": "^1.6.7"

@@ -1,35 +1,27 @@
 const axios = require('axios');
 
-let Accessory, Service, Characteristic, uuid;
+let Service, Characteristic;
 
-// Base class for Rain Status accessories - matches Google Nest pattern
+// Base class implementing the AccessoryPlugin interface (Homebridge 2 compatible)
 class RainStatusAccessory {
   constructor(log, name, accessoryType, platform, api) {
-    // Store references
     this.log = log;
     this.name = name;
     this.accessoryType = accessoryType; // 'current' or 'previous'
     this.platform = platform;
     this.api = api;
-    
+    this.services = [];
+    this.boundCharacteristics = [];
+
     this.log.info(`Initializing ${accessoryType} rain accessory: ${name}`);
-    
-    // Generate UUID for this accessory
-    const id = this.api.hap.uuid.generate('rain-status.' + accessoryType + '.' + name);
-    
-    // Call parent Accessory constructor (will be set up in module.exports)
-    Accessory.call(this, name, id);
-    this.uuid_base = id;
-    
-    // Set up AccessoryInformation service
-    this.getService(Service.AccessoryInformation)
+
+    const infoService = new Service.AccessoryInformation();
+    infoService
       .setCharacteristic(Characteristic.Manufacturer, 'Rain Status Plugin')
       .setCharacteristic(Characteristic.Model, 'Rain Sensor')
       .setCharacteristic(Characteristic.Name, name)
       .setCharacteristic(Characteristic.SerialNumber, accessoryType + '-' + Date.now());
-    
-    // Initialize boundCharacteristics array for this accessory instance
-    this.boundCharacteristics = [];
+    this.services.push(infoService);
   }
   
   // Google Nest pattern: getServices method
@@ -76,8 +68,8 @@ class CurrentRainAccessory extends RainStatusAccessory {
     // Call parent constructor
     super(log, name, 'current', platform, api);
     
-    // Create ContactSensor service
-    const sensorService = this.addService(Service.ContactSensor, name);
+    const sensorService = new Service.ContactSensor(name);
+    this.services.push(sensorService);
     
     // Bind the ContactSensorState characteristic
     this.bindCharacteristic(
@@ -108,8 +100,8 @@ class PreviousRainAccessory extends RainStatusAccessory {
     // Call parent constructor
     super(log, name, 'previous', platform, api);
     
-    // Create ContactSensor service
-    const sensorService = this.addService(Service.ContactSensor, name);
+    const sensorService = new Service.ContactSensor(name);
+    this.services.push(sensorService);
     
     // Bind the ContactSensorState characteristic
     this.bindCharacteristic(
@@ -400,6 +392,9 @@ class RainStatusPlatform {
         }
       }
 
+      // Log rainfall totals on every check
+      this.log.info(`Rainfall totals: Previous day: ${previousDayRain.toFixed(2)}", Two-day: ${twoDayRain.toFixed(2)}", Three-day: ${threeDayRain.toFixed(2)}"`);
+      
       // Check thresholds
       const previousState = this.previousRainState;
       const newState = (previousDayRain >= rainThresholds.previous_day_threshold) || 
@@ -407,10 +402,13 @@ class RainStatusPlatform {
       
       this.previousRainState = newState;
       
+      this.log.info(`[DEBUG] Previous Rain State - Previous: ${previousState ? 'DETECTED' : 'NOT DETECTED'}, New: ${newState ? 'DETECTED' : 'NOT DETECTED'}, Thresholds: ${rainThresholds.previous_day_threshold}" / ${rainThresholds.two_day_threshold}"`);
+      
       if (previousState !== newState) {
-        this.log.info(`🔔 Rainfall totals: Previous day: ${previousDayRain.toFixed(2)}", Two-day: ${twoDayRain.toFixed(2)}", Three-day: ${threeDayRain.toFixed(2)}"`);
-        this.log.info(`🔔 Rain conditions ${newState ? 'met' : 'not met'}: Thresholds (${rainThresholds.previous_day_threshold}" / ${rainThresholds.two_day_threshold}")`);
+        this.log.info(`🔔 Rain conditions ${newState ? 'met' : 'not met'}: Previous day threshold (${rainThresholds.previous_day_threshold}") or Two-day threshold (${rainThresholds.two_day_threshold}")`);
         this.updateAllAccessories();
+      } else {
+        this.log.info(`[DEBUG] Previous rain status unchanged - ${this.previousRainState ? 'Still DETECTED' : 'Still NOT DETECTED'}`);
       }
 
     } catch (error) {
@@ -440,26 +438,8 @@ class RainStatusPlatform {
 }
 
 module.exports = (api) => {
-  // Set up global references (Google Nest pattern)
-  Accessory = api.hap.Accessory;
   Service = api.hap.Service;
   Characteristic = api.hap.Characteristic;
-  uuid = api.hap.uuid;
-  
-  // Set up inheritance for RainStatusAccessory (Google Nest pattern)
-  const inherits = require('util').inherits;
-  const originalPrototype = RainStatusAccessory.prototype;
-  inherits(RainStatusAccessory, Accessory);
-  RainStatusAccessory.prototype.parent = Accessory.prototype;
-  
-  // Restore our custom methods after inherits() call
-  for (const methodName in originalPrototype) {
-    RainStatusAccessory.prototype[methodName] = originalPrototype[methodName];
-  }
-  
-  try {
-    api.registerPlatform('homebridge-rain-status', 'RainStatus', RainStatusPlatform);
-  } catch (error) {
-    console.error('ERROR registering platform:', error.message);
-  }
+
+  api.registerPlatform('homebridge-rain-status', 'RainStatus', RainStatusPlatform);
 };
