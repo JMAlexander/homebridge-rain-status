@@ -48,16 +48,16 @@ class RainStatusAccessory {
       actual.on('set', setFunc.bind(this));
     }
     
-    // Track bound characteristics for getValue() calls
-    this.boundCharacteristics.push([service, characteristic]);
+    // Track bound characteristics for updateData() calls
+    this.boundCharacteristics.push([service, characteristic, getFunc]);
     
     return actual;
   }
   
   // Google Nest pattern: updateData method
   updateData() {
-    this.boundCharacteristics.map(function (c) {
-      c[0].getCharacteristic(c[1]).getValue();
+    this.boundCharacteristics.forEach(([service, characteristic, getFunc]) => {
+      service.getCharacteristic(characteristic).updateValue(getFunc());
     });
   }
 }

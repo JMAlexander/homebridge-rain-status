@@ -1,6 +1,6 @@
 {
   "name": "homebridge-rain-status",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Homebridge plugin that combines current rain status and previous rainfall monitoring",
   "main": "index.js",
   "scripts": {
